@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cek Sheet Digital — Pabrik</title>
+<style>
+  :root{
+    --ink:#1B2A32; --ink-soft:#5C6B70; --bg:#F5F6F4; --surface:#FFFFFF;
+    --amber:#E8A33D; --amber-dark:#C88420; --green:#3A7D5C; --green-bg:#E8F3ED;
+    --red:#B5442E; --red-bg:#FBEAE6; --line:#E4E2DC;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
+  header{background:var(--ink);color:#fff;padding:20px;position:sticky;top:0;z-index:20;}
+  header .row{display:flex;justify-content:space-between;align-items:center;}
+  header .eyebrow{font-size:11px;letter-spacing:.2em;color:var(--amber);font-weight:600;text-transform:uppercase;}
+  header h1{font-size:20px;margin:2px 0 0;font-weight:700;}
+  .stamp{border:2px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;text-align:center;transform:rotate(-3deg);line-height:1.1;}
+  .stamp.complete{border-color:#6ee7b7;color:#6ee7b7;}
+  .stamp .label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;}
+  .stamp .num{font-size:16px;font-weight:700;}
+
+  nav{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:20;}
+  nav button{flex:1;border:none;background:none;padding:10px 4px;font-size:11px;font-weight:600;color:#9aa3a6;border-bottom:2px solid transparent;}
+  nav button.active{color:var(--ink);border-color:var(--amber);}
+
+  main{padding:16px;max-width:640px;margin:0 auto;padding-bottom:80px;}
+  .card{background:var(--surface);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:10px;}
+  .area-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:none;background:var(--surface);cursor:pointer;}
+  .area-name{font-weight:600;}
+  .area-code{font-size:12px;color:#9aa3a6;font-family:monospace;margin-top:2px;}
+  .area-fieldcount{font-size:11px;color:#9aa3a6;margin-top:4px;}
+  .badge{font-size:10px;font-weight:700;padding:4px 8px;border-radius:99px;}
+  .badge.done{color:var(--green);background:var(--green-bg);}
+  .badge.pending{color:var(--amber-dark);background:#FBF2E2;}
+  .badge.warn{color:var(--red);background:var(--red-bg);display:flex;align-items:center;gap:4px;}
+
+  label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;}
+  input[type=text],input[type=number],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--amber);border-color:var(--amber);}
+  .shift-row{display:flex;gap:8px;margin-bottom:14px;}
+  .shift-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+  .shift-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .field-row{margin-bottom:14px;}
+  .field-check-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .ok-btns{display:flex;gap:6px;}
+  .ok-btn{width:64px;padding:8px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;}
+  .ok-btn.ok.sel{background:var(--green);color:#fff;border-color:var(--green);}
+  .ok-btn.no.sel{background:var(--red);color:#fff;border-color:var(--red);}
+
+  .btn-primary{width:100%;background:var(--amber);color:var(--ink);font-weight:700;border:none;padding:13px;border-radius:12px;font-size:14px;cursor:pointer;}
+  .btn-secondary{width:100%;background:#fff;color:var(--ink-soft);font-weight:600;border:1px solid var(--line);padding:11px;border-radius:10px;font-size:13px;cursor:pointer;}
+  .btn-dark{width:100%;background:var(--ink);color:#fff;font-weight:700;border:none;padding:12px;border-radius:12px;font-size:14px;cursor:pointer;margin-bottom:10px;}
+  .link-btn{background:none;border:none;color:var(--ink-soft);font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;padding:0 0 10px;}
+
+  .error-box{background:var(--red-bg);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;}
+  .toast{position:fixed;left:16px;right:16px;bottom:16px;background:var(--green);color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;z-index:40;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+  .toast.error{background:var(--red);}
+  .empty{text-align:center;color:#9aa3a6;font-size:13px;padding:40px 0;}
+  .chev{color:#c7c9c8;}
+
+  .field-item{display:flex;justify-content:space-between;align-items:center;background:#FAFAF8;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:13px;}
+  .field-item .type{font-size:10px;color:#9aa3a6;margin-left:8px;}
+  .del-x{color:var(--red);background:none;border:none;cursor:pointer;font-size:14px;}
+  .add-field-row{display:flex;gap:6px;margin-top:8px;}
+  .add-field-row input{flex:1;}
+  .add-field-row select{width:110px;font-size:11px;padding:8px;}
+  .add-field-row button{background:var(--ink);color:#fff;border:none;border-radius:8px;width:38px;font-size:16px;cursor:pointer;}
+
+  .setup-banner{background:#FBF2E2;border:1px solid var(--amber);border-radius:10px;padding:14px;font-size:13px;line-height:1.5;margin-bottom:14px;}
+  .setup-banner code{background:#fff;padding:1px 5px;border-radius:4px;font-size:12px;}
+  .loading{text-align:center;padding:60px 0;color:#9aa3a6;}
+  .entry-header{display:flex;justify-content:space-between;align-items:flex-start;}
+  .entry-meta{font-size:12px;color:#9aa3a6;margin-top:2px;}
+  .entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
+  .entry-field{font-size:12px;}
+  .entry-field .k{color:#9aa3a6;}
+  .entry-field .v{font-weight:600;}
+  .entry-actions{display:flex;gap:10px;margin-top:10px;}
+  .entry-actions button{font-size:12px;background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;padding:0;}
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;}
+  .toolbar select{flex:1;}
+  .export-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 14px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="row">
+    <div>
+      <div class="eyebrow">Cek Sheet Digital</div>
+      <h1>Pabrik Pengolahan Emas</h1>
+    </div>
+    <div class="stamp" id="stamp"><div class="label">Area Hari Ini</div><div class="num">0/0</div></div>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="isi" class="active">Isi Cek Sheet</button>
+  <button data-tab="kelola">Kelola Area</button>
+  <button data-tab="riwayat">Riwayat</button>
+</nav>
+
+<main id="main">
+  <div class="loading">Memuat data…</div>
+</main>
+
+<script>
+/* ====== KONFIGURASI ======
+   Tempel URL Web App Google Apps Script kamu di bawah ini,
+   setelah deploy backend-apps-script.gs (lihat panduan setup).
+*/
+const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfqKvpZKrCAaocJa8TjmaZ7x1ak7IDmvbU1RuKO2Rm9Chk/exec";
+
+const SHIFTS = ["Shift 1","Shift 2","Shift 3"];
+const FIELD_TYPES = [
+  {value:"checkbox",label:"Centang (OK/Tidak)"},
+  {value:"number",label:"Angka"},
+  {value:"text",label:"Catatan singkat"}
+];
+
+let state = { areas: [], templates: {}, entries: [], loaded:false };
+let tab = "isi";
+let selectedArea = null;
+let formValues = {};
+let formShift = SHIFTS[0];
+let formOperator = "";
+let formError = "";
+
+function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
+function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+async function apiGet(){
+  const res = await fetch(API_URL);
+  return res.json();
+}
+async function apiPost(action, data){
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain"},
+    body: JSON.stringify({action, data})
+  });
+  return res.json();
+}
+
+function toast(msg, isError){
+  const el = document.createElement("div");
+  el.className = "toast" + (isError ? " error":"");
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2500);
+}
+
+async function loadData(){
+  if (API_URL.indexOf("TEMPEL_URL") === 0 || !API_URL) {
+    document.getElementById("main").innerHTML = `
+      <div class="setup-banner">
+        <b>Belum terhubung ke Google Sheets.</b><br>
+        Deploy <code>backend-apps-script.gs</code> sebagai Web App di Google Apps Script,
+        lalu tempel URL-nya ke variabel <code>API_URL</code> di bagian atas file HTML ini.
+      </div>`;
+    return;
+  }
+  try {
+    const data = await apiGet();
+    state.areas = data.areas.map(a => ({...a, active: a.active === true || a.active === "TRUE" || a.active === "true"}));
+    const templates = {};
+    data.templates.forEach(t => {
+      if (!templates[t.areaId]) templates[t.areaId] = [];
+      templates[t.areaId].push(t);
+    });
+    state.templates = templates;
+    state.entries = data.entries;
+    state.loaded = true;
+    render();
+  } catch(err){
+    document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data dari Google Sheets. Cek koneksi internet atau URL API. (${esc(err.message)})</div>`;
+  }
+}
+
+async function refreshSilently(){
+  try{
+    const data = await apiGet();
+    state.areas = data.areas.map(a => ({...a, active: a.active === true || a.active === "TRUE" || a.active === "true"}));
+    const templates = {};
+    data.templates.forEach(t => { if (!templates[t.areaId]) templates[t.areaId]=[]; templates[t.areaId].push(t); });
+    state.templates = templates;
+    state.entries = data.entries;
+  } catch(e){}
+}
+
+function setTab(t){ tab = t; selectedArea = null; render(); }
+
+function render(){
+  document.querySelectorAll("nav button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  const activeAreas = state.areas.filter(a=>a.active);
+  const t = todayKey(new Date());
+  const doneToday = new Set(state.entries.filter(e=>todayKey(e.datetime)===t).map(e=>e.areaId));
+  const doneCount = activeAreas.filter(a=>doneToday.has(a.id)).length;
+  const stampEl = document.getElementById("stamp");
+  stampEl.className = "stamp" + (activeAreas.length>0 && doneCount>=activeAreas.length ? " complete":"");
+  stampEl.querySelector(".num").textContent = `${doneCount}/${activeAreas.length}`;
+
+  const main = document.getElementById("main");
+  if (tab === "isi") main.innerHTML = renderIsi();
+  else if (tab === "kelola") main.innerHTML = renderKelola();
+  else main.innerHTML = renderRiwayat();
+  attachHandlers();
+}
+
+// ---------- TAB: ISI CEK SHEET ----------
+function renderIsi(){
+  if (selectedArea) return renderForm();
+  const activeAreas = state.areas.filter(a=>a.active);
+  if (activeAreas.length===0) return `<div class="empty">Belum ada area aktif. Tambahkan lewat tab Kelola Area.</div>`;
+  const t = todayKey(new Date());
+  return activeAreas.map(a=>{
+    const fields = state.templates[a.id] || [];
+    const done = state.entries.some(e=>e.areaId===a.id && todayKey(e.datetime)===t);
+    return `<button class="card area-row" data-open-area="${a.id}">
+      <div>
+        <div class="area-name">${esc(a.name)}</div>
+        <div class="area-code">${esc(a.code)}</div>
+        <div class="area-fieldcount">${fields.length} poin cek</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge ${done?'done':'pending'}">${done?'Sudah diisi':'Belum'}</span>
+        <span class="chev">›</span>
+      </div>
+    </button>`;
+  }).join("");
+}
+
+function renderForm(){
+  const area = state.areas.find(a=>a.id===selectedArea);
+  const fields = (state.templates[area.id]||[]).slice().sort((a,b)=>a.order-b.order);
+  return `
+    <button class="link-btn" data-cancel-form="1">✕ Batal, kembali ke daftar area</button>
+    <div class="card"><div class="area-name">${esc(area.name)}</div><div class="area-code">${esc(area.code)}</div></div>
+    <div class="card">
+      <label>Shift</label>
+      <div class="shift-row">
+        ${SHIFTS.map(s=>`<button class="shift-btn ${formShift===s?'active':''}" data-shift="${s}">${s}</button>`).join("")}
+      </div>
+      <label>Nama Operator</label>
+      <input type="text" id="operatorInput" placeholder="Masukkan nama" value="${esc(formOperator)}">
+    </div>
+    <div class="card">
+      <label style="text-transform:uppercase;letter-spacing:.05em;">Poin Pemeriksaan</label>
+      ${fields.length===0 ? `<div class="empty">Area ini belum punya poin cek.</div>` : fields.map(f=>renderField(f)).join("")}
+    </div>
+    ${formError ? `<div class="error-box">⚠ ${esc(formError)}</div>` : ""}
+    <button class="btn-primary" data-submit-entry="1">Simpan Cek Sheet</button>
+  `;
+}
+
+function renderField(f){
+  const val = formValues[f.id];
+  if (f.type === "checkbox"){
+    return `<div class="field-check-row">
+      <span>${esc(f.label)}</span>
+      <div class="ok-btns">
+        <button class="ok-btn ok ${val==='ok'?'sel':''}" data-field="${f.id}" data-val="ok">✓ OK</button>
+        <button class="ok-btn no ${val==='tidak'?'sel':''}" data-field="${f.id}" data-val="tidak">✕ Tidak</button>
+      </div>
+    </div>`;
+  }
+  if (f.type === "number"){
+    return `<div class="field-row"><label>${esc(f.label)}</label>
+      <input type="number" data-field-input="${f.id}" value="${val??''}"></div>`;
+  }
+  return `<div class="field-row"><label>${esc(f.label)}</label>
+    <textarea rows="2" data-field-input="${f.id}">${val??''}</textarea></div>`;
+}
+
+async function submitEntry(){
+  const area = state.areas.find(a=>a.id===selectedArea);
+  const fields = state.templates[area.id]||[];
+  if (!formOperator.trim()){ formError="Nama operator wajib diisi."; render(); return; }
+  const missing = fields.filter(f=>f.type!=="text" && (formValues[f.id]===undefined || formValues[f.id]===""));
+  if (missing.length>0){ formError=`Masih ada ${missing.length} poin yang belum diisi.`; render(); return; }
+  const entry = {
+    id: uid("e"), areaId: area.id, areaName: area.name, shift: formShift,
+    operator: formOperator.trim(), datetime: new Date().toISOString(), values: formValues
+  };
+  toast("Menyimpan…");
+  const res = await apiPost("addEntry", entry);
+  if (res.ok){
+    await refreshSilently();
+    selectedArea=null; formValues={}; formOperator=""; formError="";
+    render();
+    toast("Cek sheet tersimpan");
+  } else {
+    toast("Gagal menyimpan: "+(res.error||""), true);
+  }
+}
+
+// ---------- TAB: KELOLA AREA ----------
+let showAddAreaForm = false;
+let expandedArea = null;
+
+function renderKelola(){
+  let html = `<button class="btn-dark" data-toggle-addarea="1">+ Tambah Area Baru</button>`;
+  if (showAddAreaForm){
+    html += `<div class="card">
+      <input type="text" id="newAreaName" placeholder="Nama area (mis. Cyanide Tank Area)" style="margin-bottom:8px;">
+      <input type="text" id="newAreaCode" placeholder="Kode form (mis. TT-PRO-FO-XX-XXX)" style="font-family:monospace;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn-secondary" data-cancel-addarea="1">Batal</button>
+        <button class="btn-primary" data-save-addarea="1">Simpan Area</button>
+      </div>
+    </div>`;
+  }
+  html += state.areas.map(a=>{
+    const fields = state.templates[a.id]||[];
+    const open = expandedArea===a.id;
+    let inner = "";
+    if (open){
+      inner = `<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:6px;">
+        <button class="link-btn" data-toggle-active="${a.id}" style="text-decoration:underline;">${a.active?'Nonaktifkan area ini':'Aktifkan area ini'}</button>
+        ${fields.map(f=>`<div class="field-item">
+          <span>${esc(f.label)}<span class="type">${FIELD_TYPES.find(t=>t.value===f.type)?.label||f.type}</span></span>
+          <button class="del-x" data-remove-field="${a.id}|${f.id}">🗑</button>
+        </div>`).join("")}
+        <div class="add-field-row">
+          <input type="text" placeholder="Poin cek baru" data-newfield-label="${a.id}">
+          <select data-newfield-type="${a.id}">
+            ${FIELD_TYPES.map(t=>`<option value="${t.value}">${t.label}</option>`).join("")}
+          </select>
+          <button data-add-field="${a.id}">+</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="card">
+      <button class="area-row" data-toggle-expand="${a.id}" style="width:100%;">
+        <div>
+          <div class="area-name">${esc(a.name)} ${!a.active?'<span class="badge pending" style="margin-left:6px;">Nonaktif</span>':''}</div>
+          <div class="area-code">${esc(a.code)}</div>
+        </div>
+        <span class="chev" style="transform:${open?'rotate(90deg)':'none'};display:inline-block;">›</span>
+      </button>
+      ${inner}
+    </div>`;
+  }).join("");
+  return html;
+}
+
+// ---------- TAB: RIWAYAT ----------
+let filterArea = "all";
+
+function renderRiwayat(){
+  const sorted = state.entries
+    .filter(e => filterArea==="all" || e.areaId===filterArea)
+    .slice().sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
+
+  let html = `<div class="toolbar">
+    <select id="filterAreaSelect">
+      <option value="all">Semua Area</option>
+      ${state.areas.map(a=>`<option value="${a.id}" ${filterArea===a.id?'selected':''}>${esc(a.name)}</option>`).join("")}
+    </select>
+    <button class="export-btn" data-export-csv="1">Export CSV</button>
+  </div>`;
+
+  if (sorted.length===0){ html += `<div class="empty">Belum ada riwayat cek sheet.</div>`; return html; }
+
+  html += sorted.map(e=>{
+    const fields = state.templates[e.areaId]||[];
+    const values = e.values || {};
+    const anomali = fields.some(f=>f.type==="checkbox" && values[f.id]==="tidak");
+    return `<div class="card">
+      <div class="entry-header">
+        <div>
+          <div class="area-name" style="font-size:14px;">${esc(e.areaName)}</div>
+          <div class="entry-meta">${esc(e.operator)} · ${esc(e.shift)} · ${new Date(e.datetime).toLocaleString('id-ID')}</div>
+        </div>
+        ${anomali ? `<span class="badge warn">⚠ Ada Tidak OK</span>` : ""}
+      </div>
+      <div class="entry-grid">
+        ${fields.map(f=>`<div class="entry-field"><span class="k">${esc(f.label)}: </span><span class="v">${
+          f.type==="checkbox" ? (values[f.id]==="ok"?"OK":"Tidak") : (values[f.id]||"-")
+        }</span></div>`).join("")}
+      </div>
+      <div class="entry-actions">
+        <button data-delete-entry="${e.id}">Hapus</button>
+      </div>
+    </div>`;
+  }).join("");
+  return html;
+}
+
+function exportCSV(){
+  const sorted = state.entries.filter(e => filterArea==="all" || e.areaId===filterArea);
+  if (sorted.length===0){ toast("Tidak ada data untuk diexport", true); return; }
+  const rows = [["Area","Kode","Shift","Operator","Waktu","Poin Cek","Nilai"]];
+  sorted.forEach(e=>{
+    const fields = state.templates[e.areaId]||[];
+    const area = state.areas.find(a=>a.id===e.areaId);
+    const values = e.values || {};
+    fields.forEach(f=>{
+      const v = f.type==="checkbox" ? (values[f.id]==="ok"?"OK":"Tidak") : (values[f.id]||"-");
+      rows.push([e.areaName, area?area.code:"", e.shift, e.operator, new Date(e.datetime).toLocaleString('id-ID'), f.label, v]);
+    });
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `cek-sheet-export-${todayKey(new Date())}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- EVENT HANDLERS ----------
+function attachHandlers(){
+  document.querySelectorAll("[data-open-area]").forEach(el=>{
+    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; render(); };
+  });
+  const cancelForm = document.querySelector("[data-cancel-form]");
+  if (cancelForm) cancelForm.onclick = ()=>{ selectedArea=null; render(); };
+
+  document.querySelectorAll("[data-shift]").forEach(el=>{
+    el.onclick = ()=>{ formShift = el.dataset.shift; render(); };
+  });
+  const opInput = document.getElementById("operatorInput");
+  if (opInput) opInput.oninput = (e)=>{ formOperator = e.target.value; };
+
+  document.querySelectorAll("[data-field]").forEach(el=>{
+    el.onclick = ()=>{ formValues[el.dataset.field] = el.dataset.val; render(); };
+  });
+  document.querySelectorAll("[data-field-input]").forEach(el=>{
+    el.oninput = (e)=>{ formValues[el.dataset.fieldInput] = e.target.value; };
+  });
+  const submitBtn = document.querySelector("[data-submit-entry]");
+  if (submitBtn) submitBtn.onclick = submitEntry;
+
+  const toggleAddArea = document.querySelector("[data-toggle-addarea]");
+  if (toggleAddArea) toggleAddArea.onclick = ()=>{ showAddAreaForm = !showAddAreaForm; render(); };
+  const cancelAddArea = document.querySelector("[data-cancel-addarea]");
+  if (cancelAddArea) cancelAddArea.onclick = ()=>{ showAddAreaForm=false; render(); };
+  const saveAddArea = document.querySelector("[data-save-addarea]");
+  if (saveAddArea) saveAddArea.onclick = async ()=>{
+    const name = document.getElementById("newAreaName").value.trim();
+    const code = document.getElementById("newAreaCode").value.trim();
+    if (!name){ toast("Nama area wajib diisi", true); return; }
+    const res = await apiPost("addArea", {id:uid("area"), name, code});
+    if (res.ok){ await refreshSilently(); showAddAreaForm=false; render(); toast("Area ditambahkan"); }
+    else toast("Gagal: "+(res.error||""), true);
+  };
+
+  document.querySelectorAll("[data-toggle-expand]").forEach(el=>{
+    el.onclick = ()=>{ expandedArea = expandedArea===el.dataset.toggleExpand ? null : el.dataset.toggleExpand; render(); };
+  });
+  document.querySelectorAll("[data-toggle-active]").forEach(el=>{
+    el.onclick = async ()=>{
+      const id = el.dataset.toggleActive;
+      const area = state.areas.find(a=>a.id===id);
+      const res = await apiPost("toggleArea", {id, active: !area.active});
+      if (res.ok){ await refreshSilently(); render(); }
+    };
+  });
+  document.querySelectorAll("[data-add-field]").forEach(el=>{
+    el.onclick = async ()=>{
+      const areaId = el.dataset.addField;
+      const labelInput = document.querySelector(`[data-newfield-label="${areaId}"]`);
+      const typeSelect = document.querySelector(`[data-newfield-type="${areaId}"]`);
+      const label = labelInput.value.trim();
+      if (!label) return;
+      const order = (state.templates[areaId]||[]).length + 1;
+      const res = await apiPost("addField", {id:uid("f"), areaId, label, type:typeSelect.value, order});
+      if (res.ok){ await refreshSilently(); render(); }
+      else toast("Gagal: "+(res.error||""), true);
+    };
+  });
+  document.querySelectorAll("[data-remove-field]").forEach(el=>{
+    el.onclick = async ()=>{
+      const [areaId, fieldId] = el.dataset.removeField.split("|");
+      const res = await apiPost("removeField", {id: fieldId});
+      if (res.ok){ await refreshSilently(); render(); }
+    };
+  });
+
+  const filterSelect = document.getElementById("filterAreaSelect");
+  if (filterSelect) filterSelect.onchange = (e)=>{ filterArea = e.target.value; render(); };
+  const exportBtn = document.querySelector("[data-export-csv]");
+  if (exportBtn) exportBtn.onclick = exportCSV;
+  document.querySelectorAll("[data-delete-entry]").forEach(el=>{
+    el.onclick = async ()=>{
+      if (!confirm("Hapus entri cek sheet ini?")) return;
+      const res = await apiPost("deleteEntry", {id: el.dataset.deleteEntry});
+      if (res.ok){ await refreshSilently(); render(); toast("Entri dihapus"); }
+      else toast("Gagal menghapus: "+(res.error||""), true);
+    };
+  });
+}
+
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick = ()=> setTab(b.dataset.tab);
+});
+
+loadData();
+</script>
+</body>
+</html>
