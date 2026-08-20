@@ -25,7 +25,7 @@
   nav button{flex:1;border:none;background:none;padding:10px 4px;font-size:11px;font-weight:600;color:#9aa3a6;border-bottom:2px solid transparent;}
   nav button.active{color:var(--ink);border-color:var(--amber);}
 
-  main{padding:16px;max-width:640px;margin:0 auto;padding-bottom:80px;}
+  main{padding:16px;max-width:680px;margin:0 auto;padding-bottom:80px;}
   .card{background:var(--surface);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:10px;}
   .area-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:none;background:var(--surface);cursor:pointer;}
   .area-name{font-weight:600;}
@@ -35,20 +35,35 @@
   .badge.done{color:var(--green);background:var(--green-bg);}
   .badge.pending{color:var(--amber-dark);background:#FBF2E2;}
   .badge.warn{color:var(--red);background:var(--red-bg);display:flex;align-items:center;gap:4px;}
+  .badge.confirmed{color:var(--green);background:var(--green-bg);}
+  .badge.unconfirmed{color:var(--red);background:var(--red-bg);}
 
   label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;}
-  input[type=text],input[type=number],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;}
+  input[type=text],input[type=number],input[type=date],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;}
   input:focus,textarea:focus,select:focus{outline:2px solid var(--amber);border-color:var(--amber);}
   .shift-row{display:flex;gap:8px;margin-bottom:14px;}
   .shift-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
   .shift-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 
-  .field-row{margin-bottom:14px;}
-  .field-check-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .section-title{font-size:12px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;background:#EFEDE6;padding:8px 12px;border-radius:8px;margin:14px 0 8px;}
+  .section-title:first-child{margin-top:0;}
+
+  .field-row{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F0EFEA;}
+  .field-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+  .field-label{font-size:13px;color:#374348;font-weight:600;margin-bottom:8px;}
+  .field-check-row{display:flex;justify-content:space-between;align-items:center;}
   .ok-btns{display:flex;gap:6px;}
   .ok-btn{width:64px;padding:8px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;}
   .ok-btn.ok.sel{background:var(--green);color:#fff;border-color:var(--green);}
   .ok-btn.no.sel{background:var(--red);color:#fff;border-color:var(--red);}
+
+  .rating-btns{display:flex;gap:6px;}
+  .rating-btn{flex:1;padding:9px 4px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:11px;font-weight:700;cursor:pointer;text-align:center;}
+  .rating-btn[data-r="1"].sel{background:var(--red);color:#fff;border-color:var(--red);}
+  .rating-btn[data-r="2"].sel{background:var(--amber);color:#1B2A32;border-color:var(--amber);}
+  .rating-btn[data-r="3"].sel{background:var(--green);color:#fff;border-color:var(--green);}
+  .temuan-input{margin-top:8px;}
+  .temuan-input textarea{font-size:12.5px;}
 
   .btn-primary{width:100%;background:var(--amber);color:var(--ink);font-weight:700;border:none;padding:13px;border-radius:12px;font-size:14px;cursor:pointer;}
   .btn-secondary{width:100%;background:#fff;color:var(--ink-soft);font-weight:600;border:1px solid var(--line);padding:11px;border-radius:10px;font-size:13px;cursor:pointer;}
@@ -64,25 +79,35 @@
   .field-item{display:flex;justify-content:space-between;align-items:center;background:#FAFAF8;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:13px;}
   .field-item .type{font-size:10px;color:#9aa3a6;margin-left:8px;}
   .del-x{color:var(--red);background:none;border:none;cursor:pointer;font-size:14px;}
-  .add-field-row{display:flex;gap:6px;margin-top:8px;}
-  .add-field-row input{flex:1;}
-  .add-field-row select{width:110px;font-size:11px;padding:8px;}
-  .add-field-row button{background:var(--ink);color:#fff;border:none;border-radius:8px;width:38px;font-size:16px;cursor:pointer;}
+  .add-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+  .add-field-grid input,.add-field-grid select{font-size:12px;padding:8px;}
+  .add-field-full{grid-column:1 / -1;display:flex;gap:6px;}
+  .add-field-full button{background:var(--ink);color:#fff;border:none;border-radius:8px;padding:0 16px;font-size:13px;cursor:pointer;}
 
   .setup-banner{background:#FBF2E2;border:1px solid var(--amber);border-radius:10px;padding:14px;font-size:13px;line-height:1.5;margin-bottom:14px;}
   .setup-banner code{background:#fff;padding:1px 5px;border-radius:4px;font-size:12px;}
   .loading{text-align:center;padding:60px 0;color:#9aa3a6;}
   .entry-header{display:flex;justify-content:space-between;align-items:flex-start;}
   .entry-meta{font-size:12px;color:#9aa3a6;margin-top:2px;}
-  .entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
-  .entry-field{font-size:12px;}
-  .entry-field .k{color:#9aa3a6;}
-  .entry-field .v{font-weight:600;}
+  .entry-section{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;margin:10px 0 4px;}
+  .entry-field-row{display:flex;justify-content:space-between;align-items:flex-start;font-size:12.5px;padding:4px 0;gap:8px;}
+  .entry-field-row .lbl{color:#5C6B70;}
+  .entry-field-row .rt{font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;}
+  .rt1{background:var(--red-bg);color:var(--red);} .rt2{background:#FBF2E2;color:var(--amber-dark);} .rt3{background:var(--green-bg);color:var(--green);}
+  .entry-temuan{font-size:11.5px;color:#9aa3a6;font-style:italic;margin-top:1px;}
   .entry-actions{display:flex;gap:10px;margin-top:10px;}
   .entry-actions button{font-size:12px;background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;padding:0;}
   .toolbar{display:flex;gap:8px;margin-bottom:12px;}
   .toolbar select{flex:1;}
   .export-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 14px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+
+  .corrective-row{background:#FAFAF8;border-radius:10px;padding:10px;margin-bottom:8px;position:relative;}
+  .corrective-row input{margin-bottom:6px;font-size:13px;}
+  .corrective-row input:last-child{margin-bottom:0;}
+  .corrective-del{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--red);cursor:pointer;}
+  .confirm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;}
+  .confirm-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;}
+  .confirm-row span{font-size:13px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -108,18 +133,17 @@
 </main>
 
 <script>
-/* ====== KONFIGURASI ======
-   Tempel URL Web App Google Apps Script kamu di bawah ini,
-   setelah deploy backend-apps-script.gs (lihat panduan setup).
-*/
+/* ====== KONFIGURASI ====== */
 const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfqKvpZKrCAaocJa8TjmaZ7x1ak7IDmvbU1RuKO2Rm9Chk/exec";
 
-const SHIFTS = ["Shift 1","Shift 2","Shift 3"];
+const SHIFTS = ["DS (Day Shift)","NS (Night Shift)"];
 const FIELD_TYPES = [
+  {value:"rating",label:"Rating (Buruk/Bagus/Sangat Bagus)"},
   {value:"checkbox",label:"Centang (OK/Tidak)"},
   {value:"number",label:"Angka"},
   {value:"text",label:"Catatan singkat"}
 ];
+const RATING_LABELS = {1:"Buruk",2:"Bagus",3:"Sangat Bagus"};
 
 let state = { areas: [], templates: {}, entries: [], loaded:false };
 let tab = "isi";
@@ -128,21 +152,25 @@ let formValues = {};
 let formShift = SHIFTS[0];
 let formOperator = "";
 let formError = "";
+let formCorrective = [];
+let formConfirmed = false;
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-async function apiGet(){
-  const res = await fetch(API_URL);
-  return res.json();
-}
-async function apiPost(action, data){
-  const res = await fetch(API_URL, {
-    method:"POST",
-    headers:{"Content-Type":"text/plain"},
-    body: JSON.stringify({action, data})
+function groupBySection(fields){
+  const groups = {};
+  fields.forEach(f=>{
+    const sec = f.section || "Umum";
+    if (!groups[sec]) groups[sec] = [];
+    groups[sec].push(f);
   });
+  return groups;
+}
+
+async function apiGet(){ const res = await fetch(API_URL); return res.json(); }
+async function apiPost(action, data){
+  const res = await fetch(API_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action, data}) });
   return res.json();
 }
 
@@ -155,49 +183,32 @@ function toast(msg, isError){
 }
 
 async function loadData(){
-  if (API_URL.indexOf("TEMPEL_URL") === 0 || !API_URL) {
-    document.getElementById("main").innerHTML = `
-      <div class="setup-banner">
-        <b>Belum terhubung ke Google Sheets.</b><br>
-        Deploy <code>backend-apps-script.gs</code> sebagai Web App di Google Apps Script,
-        lalu tempel URL-nya ke variabel <code>API_URL</code> di bagian atas file HTML ini.
-      </div>`;
+  if (!API_URL || API_URL.indexOf("TEMPEL_URL") === 0) {
+    document.getElementById("main").innerHTML = `<div class="setup-banner"><b>Belum terhubung ke Google Sheets.</b> Deploy backend Apps Script, lalu isi API_URL di file ini.</div>`;
     return;
   }
   try {
     const data = await apiGet();
-    state.areas = data.areas.map(a => ({...a, active: a.active === true || a.active === "TRUE" || a.active === "true"}));
-    const templates = {};
-    data.templates.forEach(t => {
-      if (!templates[t.areaId]) templates[t.areaId] = [];
-      templates[t.areaId].push(t);
-    });
-    state.templates = templates;
-    state.entries = data.entries;
+    applyData(data);
     state.loaded = true;
     render();
   } catch(err){
-    document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data dari Google Sheets. Cek koneksi internet atau URL API. (${esc(err.message)})</div>`;
+    document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data. Cek koneksi internet / URL API / kolom sheet sudah sesuai format baru. (${esc(err.message)})</div>`;
   }
 }
-
-async function refreshSilently(){
-  try{
-    const data = await apiGet();
-    state.areas = data.areas.map(a => ({...a, active: a.active === true || a.active === "TRUE" || a.active === "true"}));
-    const templates = {};
-    data.templates.forEach(t => { if (!templates[t.areaId]) templates[t.areaId]=[]; templates[t.areaId].push(t); });
-    state.templates = templates;
-    state.entries = data.entries;
-  } catch(e){}
+function applyData(data){
+  state.areas = data.areas.map(a => ({...a, active: a.active === true || a.active === "TRUE" || a.active === "true"}));
+  const templates = {};
+  data.templates.forEach(t => { if (!templates[t.areaId]) templates[t.areaId]=[]; templates[t.areaId].push(t); });
+  state.templates = templates;
+  state.entries = data.entries;
 }
+async function refreshSilently(){ try{ const data = await apiGet(); applyData(data); } catch(e){} }
 
 function setTab(t){ tab = t; selectedArea = null; render(); }
 
 function render(){
-  document.querySelectorAll("nav button").forEach(b=>{
-    b.classList.toggle("active", b.dataset.tab === tab);
-  });
+  document.querySelectorAll("nav button").forEach(b=> b.classList.toggle("active", b.dataset.tab === tab));
   const activeAreas = state.areas.filter(a=>a.active);
   const t = todayKey(new Date());
   const doneToday = new Set(state.entries.filter(e=>todayKey(e.datetime)===t).map(e=>e.areaId));
@@ -239,60 +250,111 @@ function renderIsi(){
 function renderForm(){
   const area = state.areas.find(a=>a.id===selectedArea);
   const fields = (state.templates[area.id]||[]).slice().sort((a,b)=>a.order-b.order);
+  const groups = groupBySection(fields);
+
+  let fieldsHtml = "";
+  Object.keys(groups).forEach(sec=>{
+    fieldsHtml += `<div class="section-title">${esc(sec)}</div>`;
+    groups[sec].forEach(f=> fieldsHtml += renderField(f));
+  });
+
   return `
     <button class="link-btn" data-cancel-form="1">✕ Batal, kembali ke daftar area</button>
     <div class="card"><div class="area-name">${esc(area.name)}</div><div class="area-code">${esc(area.code)}</div></div>
     <div class="card">
       <label>Shift</label>
       <div class="shift-row">
-        ${SHIFTS.map(s=>`<button class="shift-btn ${formShift===s?'active':''}" data-shift="${s}">${s}</button>`).join("")}
+        ${SHIFTS.map(s=>`<button class="shift-btn ${formShift===s?'active':''}" data-shift="${esc(s)}">${s}</button>`).join("")}
       </div>
       <label>Nama Operator</label>
       <input type="text" id="operatorInput" placeholder="Masukkan nama" value="${esc(formOperator)}">
     </div>
     <div class="card">
-      <label style="text-transform:uppercase;letter-spacing:.05em;">Poin Pemeriksaan</label>
-      ${fields.length===0 ? `<div class="empty">Area ini belum punya poin cek.</div>` : fields.map(f=>renderField(f)).join("")}
+      ${fields.length===0 ? `<div class="empty">Area ini belum punya poin cek.</div>` : fieldsHtml}
     </div>
+
+    <div class="card">
+      <label style="margin-bottom:10px;">Tindakan Perbaikan &amp; Pencegahan (kalau ada temuan)</label>
+      <div id="correctiveList">${renderCorrectiveList()}</div>
+      <button class="btn-secondary" data-add-corrective="1">+ Tambah Tindakan</button>
+    </div>
+
+    <div class="confirm-row">
+      <input type="checkbox" id="confirmCheck" ${formConfirmed?'checked':''}>
+      <span>LH/Foreman sudah konfirmasi pemeriksaan ini</span>
+    </div>
+
     ${formError ? `<div class="error-box">⚠ ${esc(formError)}</div>` : ""}
     <button class="btn-primary" data-submit-entry="1">Simpan Cek Sheet</button>
   `;
 }
 
 function renderField(f){
-  const val = formValues[f.id];
+  const val = formValues[f.id] || {};
+  if (f.type === "rating"){
+    return `<div class="field-row">
+      <div class="field-label">${esc(f.label)}</div>
+      <div class="rating-btns">
+        ${[1,2,3].map(r=>`<button class="rating-btn ${val.rating===r?'sel':''}" data-rating-field="${f.id}" data-r="${r}">${RATING_LABELS[r]}</button>`).join("")}
+      </div>
+      <div class="temuan-input">
+        <textarea rows="1" placeholder="Temuan (opsional)" data-temuan-field="${f.id}">${val.temuan??''}</textarea>
+      </div>
+    </div>`;
+  }
   if (f.type === "checkbox"){
-    return `<div class="field-check-row">
-      <span>${esc(f.label)}</span>
+    return `<div class="field-row field-check-row">
+      <span class="field-label" style="margin-bottom:0;">${esc(f.label)}</span>
       <div class="ok-btns">
-        <button class="ok-btn ok ${val==='ok'?'sel':''}" data-field="${f.id}" data-val="ok">✓ OK</button>
-        <button class="ok-btn no ${val==='tidak'?'sel':''}" data-field="${f.id}" data-val="tidak">✕ Tidak</button>
+        <button class="ok-btn ok ${val.value==='ok'?'sel':''}" data-field="${f.id}" data-val="ok">✓ OK</button>
+        <button class="ok-btn no ${val.value==='tidak'?'sel':''}" data-field="${f.id}" data-val="tidak">✕ Tidak</button>
       </div>
     </div>`;
   }
   if (f.type === "number"){
     return `<div class="field-row"><label>${esc(f.label)}</label>
-      <input type="number" data-field-input="${f.id}" value="${val??''}"></div>`;
+      <input type="number" data-field-input="${f.id}" value="${val.value??''}"></div>`;
   }
   return `<div class="field-row"><label>${esc(f.label)}</label>
-    <textarea rows="2" data-field-input="${f.id}">${val??''}</textarea></div>`;
+    <textarea rows="2" data-field-input="${f.id}">${val.value??''}</textarea></div>`;
+}
+
+function renderCorrectiveList(){
+  if (formCorrective.length===0) return `<div class="empty" style="padding:14px 0;">Belum ada tindakan ditambahkan</div>`;
+  return formCorrective.map((c,i)=>`
+    <div class="corrective-row">
+      <button class="corrective-del" data-del-corrective="${i}">🗑</button>
+      <input type="text" placeholder="No WR" data-corr-field="${i}|noWR" value="${esc(c.noWR)}">
+      <input type="text" placeholder="Deskripsi tindakan" data-corr-field="${i}|deskripsi" value="${esc(c.deskripsi)}">
+      <input type="text" placeholder="Tanggung jawab" data-corr-field="${i}|tanggungJawab" value="${esc(c.tanggungJawab)}">
+      <input type="text" placeholder="Tenggat pengerjaan" data-corr-field="${i}|tenggat" value="${esc(c.tenggat)}">
+    </div>
+  `).join("");
 }
 
 async function submitEntry(){
   const area = state.areas.find(a=>a.id===selectedArea);
   const fields = state.templates[area.id]||[];
   if (!formOperator.trim()){ formError="Nama operator wajib diisi."; render(); return; }
-  const missing = fields.filter(f=>f.type!=="text" && (formValues[f.id]===undefined || formValues[f.id]===""));
+  const missing = fields.filter(f=>{
+    const v = formValues[f.id]||{};
+    if (f.type==="rating") return v.rating===undefined;
+    if (f.type==="checkbox") return v.value===undefined;
+    if (f.type==="number") return v.value===undefined || v.value==="";
+    return false;
+  });
   if (missing.length>0){ formError=`Masih ada ${missing.length} poin yang belum diisi.`; render(); return; }
+
   const entry = {
     id: uid("e"), areaId: area.id, areaName: area.name, shift: formShift,
-    operator: formOperator.trim(), datetime: new Date().toISOString(), values: formValues
+    operator: formOperator.trim(), datetime: new Date().toISOString(),
+    values: formValues, correctiveActions: formCorrective, confirmed: formConfirmed
   };
   toast("Menyimpan…");
   const res = await apiPost("addEntry", entry);
   if (res.ok){
     await refreshSilently();
-    selectedArea=null; formValues={}; formOperator=""; formError="";
+    selectedArea=null; formValues={}; formOperator=""; formError=""; formCorrective=[]; formConfirmed=false;
     render();
     toast("Cek sheet tersimpan");
   } else {
@@ -317,22 +379,31 @@ function renderKelola(){
     </div>`;
   }
   html += state.areas.map(a=>{
-    const fields = state.templates[a.id]||[];
+    const fields = (state.templates[a.id]||[]).slice().sort((x,y)=>x.order-y.order);
+    const groups = groupBySection(fields);
     const open = expandedArea===a.id;
     let inner = "";
     if (open){
-      inner = `<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:6px;">
-        <button class="link-btn" data-toggle-active="${a.id}" style="text-decoration:underline;">${a.active?'Nonaktifkan area ini':'Aktifkan area ini'}</button>
-        ${fields.map(f=>`<div class="field-item">
+      let listHtml = "";
+      Object.keys(groups).forEach(sec=>{
+        listHtml += `<div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;margin:10px 0 4px;">${esc(sec)}</div>`;
+        groups[sec].forEach(f=> listHtml += `<div class="field-item">
           <span>${esc(f.label)}<span class="type">${FIELD_TYPES.find(t=>t.value===f.type)?.label||f.type}</span></span>
           <button class="del-x" data-remove-field="${a.id}|${f.id}">🗑</button>
-        </div>`).join("")}
-        <div class="add-field-row">
-          <input type="text" placeholder="Poin cek baru" data-newfield-label="${a.id}">
+        </div>`);
+      });
+      inner = `<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:6px;">
+        <button class="link-btn" data-toggle-active="${a.id}" style="text-decoration:underline;">${a.active?'Nonaktifkan area ini':'Aktifkan area ini'}</button>
+        ${listHtml}
+        <div class="add-field-grid">
+          <input type="text" placeholder="Kategori (mis. General)" data-newfield-section="${a.id}">
           <select data-newfield-type="${a.id}">
             ${FIELD_TYPES.map(t=>`<option value="${t.value}">${t.label}</option>`).join("")}
           </select>
-          <button data-add-field="${a.id}">+</button>
+          <div class="add-field-full">
+            <input type="text" placeholder="Poin cek baru" data-newfield-label="${a.id}" style="flex:1;">
+            <button data-add-field="${a.id}">+ Tambah</button>
+          </div>
         </div>
       </div>`;
     }
@@ -369,22 +440,51 @@ function renderRiwayat(){
   if (sorted.length===0){ html += `<div class="empty">Belum ada riwayat cek sheet.</div>`; return html; }
 
   html += sorted.map(e=>{
-    const fields = state.templates[e.areaId]||[];
+    const fields = (state.templates[e.areaId]||[]).slice().sort((a,b)=>a.order-b.order);
     const values = e.values || {};
-    const anomali = fields.some(f=>f.type==="checkbox" && values[f.id]==="tidak");
+    const groups = groupBySection(fields);
+    const anomali = fields.some(f=>{
+      const v = values[f.id]||{};
+      return (f.type==="checkbox" && v.value==="tidak") || (f.type==="rating" && v.rating===1);
+    });
+    const corrective = e.correctiveActions || [];
+
+    let bodyHtml = "";
+    Object.keys(groups).forEach(sec=>{
+      bodyHtml += `<div class="entry-section">${esc(sec)}</div>`;
+      groups[sec].forEach(f=>{
+        const v = values[f.id]||{};
+        let valHtml = "-";
+        if (f.type==="rating" && v.rating) valHtml = `<span class="rt rt${v.rating}">${RATING_LABELS[v.rating]}</span>`;
+        else if (f.type==="checkbox") valHtml = v.value==="ok" ? `<span class="rt rt3">OK</span>` : `<span class="rt rt1">Tidak</span>`;
+        else valHtml = esc(v.value||"-");
+        bodyHtml += `<div class="entry-field-row"><span class="lbl">${esc(f.label)}</span>${valHtml}</div>`;
+        if (f.type==="rating" && v.temuan) bodyHtml += `<div class="entry-temuan">"${esc(v.temuan)}"</div>`;
+      });
+    });
+
+    if (corrective.length>0){
+      bodyHtml += `<div class="entry-section">Tindakan Perbaikan</div>`;
+      corrective.forEach(c=>{
+        bodyHtml += `<div class="entry-field-row" style="flex-direction:column;align-items:flex-start;">
+          <span class="lbl"><b>${esc(c.noWR||'-')}</b> — ${esc(c.deskripsi||'-')}</span>
+          <span class="entry-temuan">PIC: ${esc(c.tanggungJawab||'-')} · Tenggat: ${esc(c.tenggat||'-')}</span>
+        </div>`;
+      });
+    }
+
     return `<div class="card">
       <div class="entry-header">
         <div>
           <div class="area-name" style="font-size:14px;">${esc(e.areaName)}</div>
           <div class="entry-meta">${esc(e.operator)} · ${esc(e.shift)} · ${new Date(e.datetime).toLocaleString('id-ID')}</div>
         </div>
-        ${anomali ? `<span class="badge warn">⚠ Ada Tidak OK</span>` : ""}
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+          ${anomali ? `<span class="badge warn">⚠ Ada Buruk/Tidak OK</span>` : ""}
+          <span class="badge ${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? 'confirmed':'unconfirmed'}">${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? '✓ Terkonfirmasi':'Belum konfirmasi'}</span>
+        </div>
       </div>
-      <div class="entry-grid">
-        ${fields.map(f=>`<div class="entry-field"><span class="k">${esc(f.label)}: </span><span class="v">${
-          f.type==="checkbox" ? (values[f.id]==="ok"?"OK":"Tidak") : (values[f.id]||"-")
-        }</span></div>`).join("")}
-      </div>
+      ${bodyHtml}
       <div class="entry-actions">
         <button data-delete-entry="${e.id}">Hapus</button>
       </div>
@@ -396,14 +496,19 @@ function renderRiwayat(){
 function exportCSV(){
   const sorted = state.entries.filter(e => filterArea==="all" || e.areaId===filterArea);
   if (sorted.length===0){ toast("Tidak ada data untuk diexport", true); return; }
-  const rows = [["Area","Kode","Shift","Operator","Waktu","Poin Cek","Nilai"]];
+  const rows = [["Area","Kode","Shift","Operator","Waktu","Kategori","Poin Cek","Nilai","Temuan","Terkonfirmasi"]];
   sorted.forEach(e=>{
     const fields = state.templates[e.areaId]||[];
     const area = state.areas.find(a=>a.id===e.areaId);
     const values = e.values || {};
+    const confirmedStr = (e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true') ? "Ya" : "Belum";
     fields.forEach(f=>{
-      const v = f.type==="checkbox" ? (values[f.id]==="ok"?"OK":"Tidak") : (values[f.id]||"-");
-      rows.push([e.areaName, area?area.code:"", e.shift, e.operator, new Date(e.datetime).toLocaleString('id-ID'), f.label, v]);
+      const v = values[f.id]||{};
+      let val = "-";
+      if (f.type==="rating") val = v.rating ? RATING_LABELS[v.rating] : "-";
+      else if (f.type==="checkbox") val = v.value==="ok"?"OK":"Tidak";
+      else val = v.value||"-";
+      rows.push([e.areaName, area?area.code:"", e.shift, e.operator, new Date(e.datetime).toLocaleString('id-ID'), f.section||"Umum", f.label, val, v.temuan||"", confirmedStr]);
     });
   });
   const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
@@ -418,7 +523,7 @@ function exportCSV(){
 // ---------- EVENT HANDLERS ----------
 function attachHandlers(){
   document.querySelectorAll("[data-open-area]").forEach(el=>{
-    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; render(); };
+    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; formCorrective=[]; formConfirmed=false; render(); };
   });
   const cancelForm = document.querySelector("[data-cancel-form]");
   if (cancelForm) cancelForm.onclick = ()=>{ selectedArea=null; render(); };
@@ -430,11 +535,44 @@ function attachHandlers(){
   if (opInput) opInput.oninput = (e)=>{ formOperator = e.target.value; };
 
   document.querySelectorAll("[data-field]").forEach(el=>{
-    el.onclick = ()=>{ formValues[el.dataset.field] = el.dataset.val; render(); };
+    el.onclick = ()=>{ formValues[el.dataset.field] = { value: el.dataset.val }; render(); };
   });
   document.querySelectorAll("[data-field-input]").forEach(el=>{
-    el.oninput = (e)=>{ formValues[el.dataset.fieldInput] = e.target.value; };
+    el.oninput = (e)=>{ formValues[el.dataset.fieldInput] = { value: e.target.value }; };
   });
+  document.querySelectorAll("[data-rating-field]").forEach(el=>{
+    el.onclick = ()=>{
+      const id = el.dataset.ratingField;
+      const cur = formValues[id] || {};
+      formValues[id] = { ...cur, rating: parseInt(el.dataset.r,10) };
+      render();
+    };
+  });
+  document.querySelectorAll("[data-temuan-field]").forEach(el=>{
+    el.oninput = (e)=>{
+      const id = el.dataset.temuanField;
+      const cur = formValues[id] || {};
+      formValues[id] = { ...cur, temuan: e.target.value };
+    };
+  });
+
+  const addCorrective = document.querySelector("[data-add-corrective]");
+  if (addCorrective) addCorrective.onclick = ()=>{
+    formCorrective.push({noWR:"",deskripsi:"",tanggungJawab:"",tenggat:""});
+    render();
+  };
+  document.querySelectorAll("[data-corr-field]").forEach(el=>{
+    el.oninput = (e)=>{
+      const [idx, key] = el.dataset.corrField.split("|");
+      formCorrective[parseInt(idx,10)][key] = e.target.value;
+    };
+  });
+  document.querySelectorAll("[data-del-corrective]").forEach(el=>{
+    el.onclick = ()=>{ formCorrective.splice(parseInt(el.dataset.delCorrective,10),1); render(); };
+  });
+  const confirmCheck = document.getElementById("confirmCheck");
+  if (confirmCheck) confirmCheck.onchange = (e)=>{ formConfirmed = e.target.checked; };
+
   const submitBtn = document.querySelector("[data-submit-entry]");
   if (submitBtn) submitBtn.onclick = submitEntry;
 
@@ -468,10 +606,14 @@ function attachHandlers(){
       const areaId = el.dataset.addField;
       const labelInput = document.querySelector(`[data-newfield-label="${areaId}"]`);
       const typeSelect = document.querySelector(`[data-newfield-type="${areaId}"]`);
+      const sectionInput = document.querySelector(`[data-newfield-section="${areaId}"]`);
       const label = labelInput.value.trim();
       if (!label) return;
       const order = (state.templates[areaId]||[]).length + 1;
-      const res = await apiPost("addField", {id:uid("f"), areaId, label, type:typeSelect.value, order});
+      const res = await apiPost("addField", {
+        id:uid("f"), areaId, label, type:typeSelect.value, order,
+        section: sectionInput.value.trim() || "Umum"
+      });
       if (res.ok){ await refreshSilently(); render(); }
       else toast("Gagal: "+(res.error||""), true);
     };
@@ -498,9 +640,7 @@ function attachHandlers(){
   });
 }
 
-document.querySelectorAll("nav button").forEach(b=>{
-  b.onclick = ()=> setTab(b.dataset.tab);
-});
+document.querySelectorAll("nav button").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
 loadData();
 </script>
