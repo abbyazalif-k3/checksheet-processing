@@ -167,6 +167,19 @@ function groupBySection(fields){
   });
   return groups;
 }
+function compareOrder(a, b){
+  const aParts = String(a.order ?? "").split(".").map(part => Number.parseInt(part, 10) || 0);
+  const bParts = String(b.order ?? "").split(".").map(part => Number.parseInt(part, 10) || 0);
+  const maxLen = Math.max(aParts.length, bParts.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const av = aParts[i] ?? 0;
+    const bv = bParts[i] ?? 0;
+    if (av !== bv) return av - bv;
+  }
+
+  return 0;
+}
 
 async function apiGet(){ const res = await fetch(API_URL); return res.json(); }
 async function apiPost(action, data){
@@ -249,8 +262,10 @@ function renderIsi(){
 
 function renderForm(){
   const area = state.areas.find(a=>a.id===selectedArea);
-  const fields = (state.templates[area.id]||[]).slice().sort((a,b)=>a.order-b.order);
+  const fields = (state.templates[area.id]||[]).slice().sort(compareOrder);
   const groups = groupBySection(fields);
+  const ratingFields = fields.filter(f=>f.type==="rating");
+  const ratedCount = ratingFields.filter(f=>formValues[f.id]?.rating !== undefined).length;
 
   let fieldsHtml = "";
   Object.keys(groups).forEach(sec=>{
@@ -270,6 +285,7 @@ function renderForm(){
       <input type="text" id="operatorInput" placeholder="Masukkan nama" value="${esc(formOperator)}">
     </div>
     <div class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;">${ratedCount}/${ratingFields.length} poin terisi</div>
       ${fields.length===0 ? `<div class="empty">Area ini belum punya poin cek.</div>` : fieldsHtml}
     </div>
 
@@ -336,9 +352,21 @@ async function submitEntry(){
   const area = state.areas.find(a=>a.id===selectedArea);
   const fields = state.templates[area.id]||[];
   if (!formOperator.trim()){ formError="Nama operator wajib diisi."; render(); return; }
+  const ratingFields = fields.filter(f=>f.type==="rating");
+  const missingRatings = ratingFields.filter(f=>{
+    const v = formValues[f.id]||{};
+    return v.rating===undefined;
+  });
+  if (missingRatings.length>0){ formError="Checklist belum lengkap. Silakan isi semua poin terlebih dahulu."; render(); return; }
+
+  const missingTemuan = ratingFields.filter(f=>{
+    const v = formValues[f.id]||{};
+    return v.rating===1 && !String(v.temuan||"").trim();
+  });
+  if (missingTemuan.length>0){ formError="Temuan wajib diisi untuk setiap poin dengan rating 1 (Buruk)."; render(); return; }
+
   const missing = fields.filter(f=>{
     const v = formValues[f.id]||{};
-    if (f.type==="rating") return v.rating===undefined;
     if (f.type==="checkbox") return v.value===undefined;
     if (f.type==="number") return v.value===undefined || v.value==="";
     return false;
@@ -379,7 +407,7 @@ function renderKelola(){
     </div>`;
   }
   html += state.areas.map(a=>{
-    const fields = (state.templates[a.id]||[]).slice().sort((x,y)=>x.order-y.order);
+    const fields = (state.templates[a.id]||[]).slice().sort(compareOrder);
     const groups = groupBySection(fields);
     const open = expandedArea===a.id;
     let inner = "";
@@ -440,7 +468,7 @@ function renderRiwayat(){
   if (sorted.length===0){ html += `<div class="empty">Belum ada riwayat cek sheet.</div>`; return html; }
 
   html += sorted.map(e=>{
-    const fields = (state.templates[e.areaId]||[]).slice().sort((a,b)=>a.order-b.order);
+    const fields = (state.templates[e.areaId]||[]).slice().sort(compareOrder);
     const values = e.values || {};
     const groups = groupBySection(fields);
     const anomali = fields.some(f=>{
