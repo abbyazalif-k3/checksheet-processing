@@ -12,21 +12,24 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
-  header{background:var(--ink);color:#fff;padding:20px;position:sticky;top:0;z-index:20;}
-  header .row{display:flex;justify-content:space-between;align-items:center;}
-  header .eyebrow{font-size:11px;letter-spacing:.2em;color:var(--amber);font-weight:600;text-transform:uppercase;}
-  header h1{font-size:20px;margin:2px 0 0;font-weight:700;}
-  .stamp{border:2px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;text-align:center;transform:rotate(-3deg);line-height:1.1;}
+  header{background:#142a35;color:#fff;padding:30px 36px 26px;position:sticky;top:0;z-index:20;}
+  header .row{display:flex;align-items:center;max-width:1350px;margin:0 auto;}
+  .brand-block{display:flex;align-items:center;gap:28px;min-width:0;}
+  .brand-logo{width:520px;height:112px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(255,255,255,.7));flex-shrink:0;}
+  .brand-title{border-left:2px solid rgba(196,210,214,.5);padding-left:36px;}
+  header .eyebrow{font-size:21px;letter-spacing:.2em;color:var(--amber);font-weight:600;text-transform:uppercase;}
+  header h1{font-size:52px;line-height:1.05;margin:10px 0 0;font-weight:700;}
+  .stamp{display:none;border:2px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;text-align:center;transform:rotate(-3deg);line-height:1.1;}
   .stamp.complete{border-color:#6ee7b7;color:#6ee7b7;}
   .stamp .label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;}
   .stamp .num{font-size:16px;font-weight:700;}
 
   nav{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:20;}
-  nav button{flex:1;border:none;background:none;padding:10px 4px;font-size:11px;font-weight:600;color:#9aa3a6;border-bottom:2px solid transparent;}
+  nav button{flex:1;border:none;background:none;padding:16px 4px;font-size:14px;font-weight:600;color:#899398;border-bottom:3px solid transparent;}
   nav button.active{color:var(--ink);border-color:var(--amber);}
 
-  main{padding:16px;max-width:680px;margin:0 auto;padding-bottom:80px;}
-  .card{background:var(--surface);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:10px;}
+  main{padding:36px;max-width:1350px;margin:0 auto;padding-bottom:80px;}
+  .card{background:var(--surface);border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(27,42,50,.06);margin-bottom:16px;}
   .area-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:none;background:var(--surface);cursor:pointer;}
   .area-name{font-weight:600;}
   .area-code{font-size:12px;color:#9aa3a6;font-family:monospace;margin-top:2px;}
@@ -108,17 +111,51 @@
   .confirm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;}
   .confirm-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;}
   .confirm-row span{font-size:13px;font-weight:600;}
+  .header-identity{display:grid;width:100%;max-width:1350px;margin:22px auto 0;padding-top:22px;border-top:1px solid rgba(196,210,214,.45);grid-template-columns:repeat(4,minmax(0,1fr));gap:34px;}
+  .header-identity > div{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11px;}
+  .header-identity span{color:#c4d0d3;font-size:20px;}
+  .header-identity b{color:#fff;font-size:24px;overflow-wrap:anywhere;}
+  #headerStatus{display:inline-flex;align-items:center;align-self:flex-start;gap:10px;color:#fff;border-radius:999px;padding:7px 18px;}
+  #headerStatus.confirmed{background:#19a957;}
+  #headerStatus.unconfirmed{background:var(--amber-dark);}
+  #headerStatus::before{content:"✓";display:inline-grid;place-items:center;width:24px;height:24px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.75);border-radius:50%;font-size:16px;font-weight:800;}
+  #headerStatus.unconfirmed::before{content:"";width:12px;height:12px;background:#f59e0b;border:none;}
+  @media (max-width:520px){
+    .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px;margin-top:16px;padding-top:16px;}
+    header{padding:16px 14px 18px;}
+    .brand-block{gap:8px;}
+    .brand-logo{width:116px;height:44px;}
+    .brand-title{padding-left:10px;}
+    header .eyebrow{font-size:9px;letter-spacing:.14em;}
+    header h1{font-size:19px;margin-top:5px;}
+    .header-identity span{font-size:11px;}
+    .header-identity b{font-size:13px;}
+    #headerStatus{gap:5px;padding:4px 8px;font-size:11px;}
+      #headerStatus::before{width:17px;height:17px;font-size:11px;}
+    nav button{padding:12px 4px;font-size:11px;}
+    main{padding:18px 14px 60px;}
+    .card{padding:18px;border-radius:14px;}
+  }
 </style>
 </head>
 <body>
 
 <header>
   <div class="row">
-    <div>
-      <div class="eyebrow">Cek Sheet Digital</div>
-      <h1>Pabrik Pengolahan Emas</h1>
+    <div class="brand-block">
+      <img class="brand-logo" src="logo-header-transparent.png" alt="Archi Indonesia dan MSM TTN">
+      <div class="brand-title">
+        <div class="eyebrow">CEK SHEET DIGITAL</div>
+        <h1>Processing Plant</h1>
+      </div>
     </div>
     <div class="stamp" id="stamp"><div class="label">Area Hari Ini</div><div class="num">0/0</div></div>
+  </div>
+  <div class="header-identity">
+    <div><span>Operator</span><b id="headerOperator">-</b></div>
+    <div><span>Crew</span><b id="headerCrew">Crew A</b></div>
+    <div><span>LH/Foreman</span><b id="headerLHForeman">-</b></div>
+    <div><span>Status</span><b id="headerStatus" class="unconfirmed">Menunggu Konfirmasi</b></div>
   </div>
 </header>
 
@@ -137,6 +174,9 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfqKvpZKrCAaocJa8TjmaZ7x1ak7IDmvbU1RuKO2Rm9Chk/exec";
 
 const SHIFTS = ["DS (Day Shift)","NS (Night Shift)"];
+const CREWS = ["Crew A","Crew B","Crew C","Crew D"];
+const APP_MODES = { OPERATOR:"OPERATOR", LH_FOREMAN:"LH_FOREMAN" };
+const ACTIVE_MODE = APP_MODES.OPERATOR;
 const FIELD_TYPES = [
   {value:"rating",label:"Rating (Buruk/Bagus/Sangat Bagus)"},
   {value:"checkbox",label:"Centang (OK/Tidak)"},
@@ -150,10 +190,10 @@ let tab = "isi";
 let selectedArea = null;
 let formValues = {};
 let formShift = SHIFTS[0];
+let formCrew = CREWS[0];
 let formOperator = "";
 let formError = "";
 let formCorrective = [];
-let formConfirmed = false;
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
@@ -218,9 +258,19 @@ function applyData(data){
 }
 async function refreshSilently(){ try{ const data = await apiGet(); applyData(data); } catch(e){} }
 
+function updateHeaderIdentity(){
+  document.getElementById("headerOperator").textContent = formOperator.trim() || "-";
+  document.getElementById("headerCrew").textContent = formCrew;
+  document.getElementById("headerLHForeman").textContent = "-";
+  const statusEl = document.getElementById("headerStatus");
+  statusEl.className = "unconfirmed";
+  statusEl.textContent = "Menunggu Konfirmasi";
+}
+
 function setTab(t){ tab = t; selectedArea = null; render(); }
 
 function render(){
+  updateHeaderIdentity();
   document.querySelectorAll("nav button").forEach(b=> b.classList.toggle("active", b.dataset.tab === tab));
   const activeAreas = state.areas.filter(a=>a.active);
   const t = todayKey(new Date());
@@ -283,6 +333,10 @@ function renderForm(){
       </div>
       <label>Nama Operator</label>
       <input type="text" id="operatorInput" placeholder="Masukkan nama" value="${esc(formOperator)}">
+      <label>Crew</label>
+      <div class="shift-row">
+        ${CREWS.map(c=>`<button class="shift-btn ${formCrew===c?'active':''}" data-crew="${esc(c)}">${c}</button>`).join("")}
+      </div>
     </div>
     <div class="card">
       <div style="font-size:13px;font-weight:700;margin-bottom:12px;">${ratedCount}/${ratingFields.length} poin terisi</div>
@@ -293,11 +347,6 @@ function renderForm(){
       <label style="margin-bottom:10px;">Tindakan Perbaikan &amp; Pencegahan (kalau ada temuan)</label>
       <div id="correctiveList">${renderCorrectiveList()}</div>
       <button class="btn-secondary" data-add-corrective="1">+ Tambah Tindakan</button>
-    </div>
-
-    <div class="confirm-row">
-      <input type="checkbox" id="confirmCheck" ${formConfirmed?'checked':''}>
-      <span>LH/Foreman sudah konfirmasi pemeriksaan ini</span>
     </div>
 
     ${formError ? `<div class="error-box">⚠ ${esc(formError)}</div>` : ""}
@@ -375,14 +424,14 @@ async function submitEntry(){
 
   const entry = {
     id: uid("e"), areaId: area.id, areaName: area.name, shift: formShift,
-    operator: formOperator.trim(), datetime: new Date().toISOString(),
-    values: formValues, correctiveActions: formCorrective, confirmed: formConfirmed
+    crew: formCrew, operator: formOperator.trim(), lhForeman: "", datetime: new Date().toISOString(),
+    values: formValues, correctiveActions: formCorrective, confirmed: false
   };
   toast("Menyimpan…");
   const res = await apiPost("addEntry", entry);
   if (res.ok){
     await refreshSilently();
-    selectedArea=null; formValues={}; formOperator=""; formError=""; formCorrective=[]; formConfirmed=false;
+    selectedArea=null; formValues={}; formOperator=""; formCrew=CREWS[0]; formError=""; formCorrective=[];
     render();
     toast("Cek sheet tersimpan");
   } else {
@@ -509,7 +558,7 @@ function renderRiwayat(){
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
           ${anomali ? `<span class="badge warn">⚠ Ada Buruk/Tidak OK</span>` : ""}
-          <span class="badge ${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? 'confirmed':'unconfirmed'}">${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? '✓ Terkonfirmasi':'Belum konfirmasi'}</span>
+          <span class="badge ${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? 'confirmed':'unconfirmed'}">${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? '✓ Terkonfirmasi':'🟠 Menunggu Konfirmasi'}</span>
         </div>
       </div>
       ${bodyHtml}
@@ -551,7 +600,7 @@ function exportCSV(){
 // ---------- EVENT HANDLERS ----------
 function attachHandlers(){
   document.querySelectorAll("[data-open-area]").forEach(el=>{
-    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; formCorrective=[]; formConfirmed=false; render(); };
+    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; formCorrective=[]; formCrew=CREWS[0]; render(); };
   });
   const cancelForm = document.querySelector("[data-cancel-form]");
   if (cancelForm) cancelForm.onclick = ()=>{ selectedArea=null; render(); };
@@ -560,8 +609,10 @@ function attachHandlers(){
     el.onclick = ()=>{ formShift = el.dataset.shift; render(); };
   });
   const opInput = document.getElementById("operatorInput");
-  if (opInput) opInput.oninput = (e)=>{ formOperator = e.target.value; };
-
+  if (opInput) opInput.oninput = (e)=>{ formOperator = e.target.value; updateHeaderIdentity(); };
+  document.querySelectorAll("[data-crew]").forEach(el=>{
+    el.onclick = ()=>{ formCrew = el.dataset.crew; render(); };
+  });
   document.querySelectorAll("[data-field]").forEach(el=>{
     el.onclick = ()=>{ formValues[el.dataset.field] = { value: el.dataset.val }; render(); };
   });
@@ -598,9 +649,6 @@ function attachHandlers(){
   document.querySelectorAll("[data-del-corrective]").forEach(el=>{
     el.onclick = ()=>{ formCorrective.splice(parseInt(el.dataset.delCorrective,10),1); render(); };
   });
-  const confirmCheck = document.getElementById("confirmCheck");
-  if (confirmCheck) confirmCheck.onchange = (e)=>{ formConfirmed = e.target.checked; };
-
   const submitBtn = document.querySelector("[data-submit-entry]");
   if (submitBtn) submitBtn.onclick = submitEntry;
 
