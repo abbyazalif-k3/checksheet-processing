@@ -100,9 +100,20 @@
   .entry-temuan{font-size:11.5px;color:#9aa3a6;font-style:italic;margin-top:1px;}
   .entry-actions{display:flex;gap:10px;margin-top:10px;}
   .entry-actions button{font-size:12px;background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;padding:0;}
+  .history-card{cursor:pointer;}
+  .history-meta{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+  .history-meta b{color:var(--ink);font-weight:700;}
+  .history-subline{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;}
+  .history-subline span:not(:last-child)::after{content:"•";margin-left:8px;color:#b6b9b7;}
+  .history-operator{margin-top:5px;font-size:12px;color:var(--ink-soft);}
+  .history-confirmation{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+  .history-comment{display:-webkit-box;line-clamp:2;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:4px;font-size:12px;color:var(--ink-soft);}
   .toolbar{display:flex;gap:8px;margin-bottom:12px;}
   .toolbar select{flex:1;}
   .export-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 14px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+  .mode-control{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:12px;color:var(--ink-soft);}
+  .mode-control select{width:auto;min-width:150px;}
+  .readonly-value{background:#FAFAF8;border:1px solid #F0EFEA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);}
 
   .corrective-row{background:#FAFAF8;border-radius:10px;padding:10px;margin-bottom:8px;position:relative;}
   .corrective-row input{margin-bottom:6px;font-size:13px;}
@@ -176,7 +187,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfq
 const SHIFTS = ["DS (Day Shift)","NS (Night Shift)"];
 const CREWS = ["Crew A","Crew B","Crew C","Crew D"];
 const APP_MODES = { OPERATOR:"OPERATOR", LH_FOREMAN:"LH_FOREMAN" };
-const ACTIVE_MODE = APP_MODES.OPERATOR;
+let activeMode = APP_MODES.OPERATOR;
 const FIELD_TYPES = [
   {value:"rating",label:"Rating (Buruk/Bagus/Sangat Bagus)"},
   {value:"checkbox",label:"Centang (OK/Tidak)"},
@@ -188,12 +199,16 @@ const RATING_LABELS = {1:"Buruk",2:"Bagus",3:"Sangat Bagus"};
 let state = { areas: [], templates: {}, entries: [], loaded:false };
 let tab = "isi";
 let selectedArea = null;
+let selectedEntryId = null;
 let formValues = {};
 let formShift = SHIFTS[0];
 let formCrew = CREWS[0];
 let formOperator = "";
 let formError = "";
 let formCorrective = [];
+let formLHForeman = "";
+let formLHComment = "";
+let confirmationError = "";
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
@@ -259,19 +274,48 @@ function applyData(data){
 async function refreshSilently(){ try{ const data = await apiGet(); applyData(data); } catch(e){} }
 
 function updateHeaderIdentity(){
-  document.getElementById("headerOperator").textContent = formOperator.trim() || "-";
-  document.getElementById("headerCrew").textContent = formCrew;
-  document.getElementById("headerLHForeman").textContent = "-";
+  const selectedEntry = state.entries.find(entry => entry.id === selectedEntryId);
+  const operator = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.operator : formOperator.trim();
+  const crew = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.crew : formCrew;
+  const lhForeman = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.lhForeman : "-";
+  const confirmed = selectedEntry && (selectedEntry.confirmed === true || selectedEntry.confirmed === "TRUE" || selectedEntry.confirmed === "true");
+  document.getElementById("headerOperator").textContent = operator || "-";
+  document.getElementById("headerCrew").textContent = crew;
+  document.getElementById("headerLHForeman").textContent = lhForeman || "-";
   const statusEl = document.getElementById("headerStatus");
-  statusEl.className = "unconfirmed";
-  statusEl.textContent = "Menunggu Konfirmasi";
+  statusEl.className = confirmed ? "confirmed" : "unconfirmed";
+  statusEl.textContent = confirmed ? "Terkonfirmasi" : "Menunggu Konfirmasi";
 }
 
-function setTab(t){ tab = t; selectedArea = null; render(); }
+function renderModeControl(){
+  return `<div class="mode-control">
+    <label for="modeSelect" style="margin:0;">Mode internal</label>
+    <select id="modeSelect">
+      <option value="${APP_MODES.OPERATOR}" ${activeMode===APP_MODES.OPERATOR?'selected':''}>Operator</option>
+      <option value="${APP_MODES.LH_FOREMAN}" ${activeMode===APP_MODES.LH_FOREMAN?'selected':''}>LH / Foreman</option>
+    </select>
+  </div>`;
+}
+
+function setMode(mode){
+  activeMode = mode;
+  selectedArea = null;
+  selectedEntryId = null;
+  confirmationError = "";
+  if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
+  render();
+}
+
+function setTab(t){ tab = t; selectedArea = null; selectedEntryId = null; render(); }
 
 function render(){
+  if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
   updateHeaderIdentity();
-  document.querySelectorAll("nav button").forEach(b=> b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll("nav button").forEach(b=>{
+    const isKelola = b.dataset.tab === "kelola";
+    b.style.display = isKelola && activeMode !== APP_MODES.LH_FOREMAN ? "none" : "";
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
   const activeAreas = state.areas.filter(a=>a.active);
   const t = todayKey(new Date());
   const doneToday = new Set(state.entries.filter(e=>todayKey(e.datetime)===t).map(e=>e.areaId));
@@ -281,14 +325,16 @@ function render(){
   stampEl.querySelector(".num").textContent = `${doneCount}/${activeAreas.length}`;
 
   const main = document.getElementById("main");
-  if (tab === "isi") main.innerHTML = renderIsi();
-  else if (tab === "kelola") main.innerHTML = renderKelola();
-  else main.innerHTML = renderRiwayat();
+  if (tab === "isi") main.innerHTML = renderModeControl() + renderIsi();
+  else if (tab === "kelola") main.innerHTML = renderModeControl() + renderKelola();
+  else main.innerHTML = renderModeControl() + renderRiwayat();
   attachHandlers();
 }
 
 // ---------- TAB: ISI CEK SHEET ----------
 function renderIsi(){
+  if (selectedEntryId) return renderConfirmation();
+  if (activeMode === APP_MODES.LH_FOREMAN) return renderEntryList();
   if (selectedArea) return renderForm();
   const activeAreas = state.areas.filter(a=>a.active);
   if (activeAreas.length===0) return `<div class="empty">Belum ada area aktif. Tambahkan lewat tab Kelola Area.</div>`;
@@ -308,6 +354,136 @@ function renderIsi(){
       </div>
     </button>`;
   }).join("");
+}
+
+function isConfirmed(entry){
+  return entry.confirmed === true || entry.confirmed === "TRUE" || entry.confirmed === "true";
+}
+
+function openEntryForConfirmation(entry){
+  selectedEntryId = entry.id;
+  formLHForeman = entry.lhForeman || "";
+  formLHComment = entry.lhComment || "";
+  confirmationError = "";
+  tab = "isi";
+  render();
+}
+
+function renderEntryList(){
+  const sorted = state.entries.slice().sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
+  if (sorted.length===0) return `<div class="empty">Belum ada pemeriksaan tersimpan.</div>`;
+  return sorted.map(entry=>`<button class="card area-row" data-open-entry="${esc(entry.id)}">
+    <div>
+      <div class="area-name">${esc(entry.areaName)}</div>
+      <div class="entry-meta">${esc(entry.operator)} · ${esc(entry.crew)} · ${esc(entry.shift)}</div>
+      <div class="entry-meta">${new Date(entry.datetime).toLocaleString('id-ID')}</div>
+    </div>
+    <span class="badge ${isConfirmed(entry)?'confirmed':'unconfirmed'}">${isConfirmed(entry)?'Terkonfirmasi':'Menunggu Konfirmasi'}</span>
+  </button>`).join("");
+}
+
+function renderEntryChecklist(entry){
+  const fields = (state.templates[entry.areaId]||[]).slice().sort(compareOrder);
+  const groups = groupBySection(fields);
+  const values = entry.values || {};
+  let html = "";
+  Object.keys(groups).forEach(sec=>{
+    html += `<div class="section-title">${esc(sec)}</div>`;
+    groups[sec].forEach(field=>{
+      const value = values[field.id] || {};
+      let result = "-";
+      if (field.type === "rating" && value.rating) result = `<span class="rt rt${value.rating}">${RATING_LABELS[value.rating]}</span>`;
+      else if (field.type === "checkbox") result = value.value === "ok" ? `<span class="rt rt3">OK</span>` : `<span class="rt rt1">Tidak</span>`;
+      else if (value.value !== undefined && value.value !== "") result = esc(value.value);
+      html += `<div class="field-row"><div class="field-label">${esc(field.label)}</div><div class="entry-field-row"><span class="lbl">Hasil</span>${result}</div>`;
+      if (field.type === "rating") html += `<div class="readonly-value">Temuan: ${esc(value.temuan || "-")}</div>`;
+      html += `</div>`;
+    });
+  });
+  const corrective = entry.correctiveActions || [];
+  html += `<div class="section-title">Tindakan Perbaikan &amp; Pencegahan</div>`;
+  html += corrective.length ? corrective.map(action=>`<div class="corrective-row">
+    <div class="readonly-value">No WR: ${esc(action.noWR || "-")}</div>
+    <div class="readonly-value">Deskripsi: ${esc(action.deskripsi || "-")}</div>
+    <div class="readonly-value">Tanggung jawab: ${esc(action.tanggungJawab || "-")}</div>
+    <div class="readonly-value">Tenggat pengerjaan: ${esc(action.tenggat || "-")}</div>
+  </div>`).join("") : `<div class="empty" style="padding:14px 0;">Tidak ada tindakan</div>`;
+  return html;
+}
+
+function renderConfirmation(){
+  const entry = state.entries.find(item => item.id === selectedEntryId);
+  if (!entry) return `<div class="error-box">Pemeriksaan tidak ditemukan.</div>`;
+  const confirmed = isConfirmed(entry);
+  if (activeMode === APP_MODES.OPERATOR){
+    return `<button class="link-btn" data-close-entry="1">✕ Kembali ke riwayat</button>
+      <div class="card">
+        <div class="area-name">${esc(entry.areaName)}</div>
+        <div class="entry-meta">Operator: ${esc(entry.operator)}</div>
+        <div class="entry-meta">Crew: ${esc(entry.crew)}</div>
+        <div class="entry-meta">Shift: ${esc(entry.shift)}</div>
+        <div class="entry-meta">Tanggal/Waktu: ${new Date(entry.datetime).toLocaleString('id-ID')}</div>
+      </div>
+      <div class="card">${renderEntryChecklist(entry)}</div>
+      ${confirmed && entry.lhComment ? `<div class="card">
+        <div class="section-title">HASIL KONFIRMASI LH / FOREMAN</div>
+        <div class="entry-field-row"><span class="lbl">LH/Foreman</span><span>${esc(entry.lhForeman || "-")}</span></div>
+        <div class="readonly-value">Komentar: ${esc(entry.lhComment)}</div>
+        <div class="badge confirmed" style="display:inline-block;margin-top:8px;">Status: Terkonfirmasi</div>
+      </div>` : `<div class="card"><div class="badge unconfirmed">Menunggu Konfirmasi</div></div>`}`;
+  }
+  return `<button class="link-btn" data-close-entry="1">✕ Kembali ke daftar pemeriksaan</button>
+    <div class="card">
+      <div class="area-name">${esc(entry.areaName)}</div>
+      <div class="entry-meta">Area: ${esc(entry.areaName)}</div>
+      <div class="entry-meta">Operator: ${esc(entry.operator)}</div>
+      <div class="entry-meta">Crew: ${esc(entry.crew)}</div>
+      <div class="entry-meta">Shift: ${esc(entry.shift)}</div>
+      <div class="entry-meta">Tanggal/Waktu: ${new Date(entry.datetime).toLocaleString('id-ID')}</div>
+    </div>
+    <div class="card">${renderEntryChecklist(entry)}</div>
+    <div class="card">
+      <div class="section-title">KONFIRMASI LH / FOREMAN</div>
+      ${confirmed ? `<div class="readonly-value">Nama LH/Foreman: ${esc(entry.lhForeman || "-")}</div>
+        <div class="readonly-value" style="margin-top:8px;">Komentar: ${esc(entry.lhComment || "-")}</div>
+        <div class="badge confirmed" style="display:inline-block;margin-top:10px;">Terkonfirmasi</div>` : `
+        <label for="lhForemanInput">Nama LH/Foreman</label>
+        <input type="text" id="lhForemanInput" value="${esc(formLHForeman)}" placeholder="Masukkan nama">
+        <label for="lhCommentInput" style="margin-top:12px;">Komentar LH / Foreman</label>
+        <textarea id="lhCommentInput" rows="4" placeholder="Tuliskan komentar terhadap hasil checksheet...">${esc(formLHComment)}</textarea>
+        ${confirmationError ? `<div class="error-box" style="margin-top:12px;margin-bottom:0;">${esc(confirmationError)}</div>` : ""}
+        <button class="btn-primary" data-confirm-entry="1" style="margin-top:12px;">Konfirmasi Pemeriksaan</button>`}
+    </div>`;
+}
+
+async function confirmEntry(){
+  if (activeMode !== APP_MODES.LH_FOREMAN) return;
+  const entry = state.entries.find(item => item.id === selectedEntryId);
+  const name = formLHForeman.trim();
+  const comment = formLHComment.trim();
+  if (!entry) return;
+  if (!name){ confirmationError = "Nama LH/Foreman wajib diisi."; render(); return; }
+  if (isConfirmed(entry)){ render(); return; }
+  toast("Mengonfirmasi…");
+  const res = await apiPost("confirmEntry", {
+    entryId: selectedEntryId,
+    lhForeman: name,
+    lhComment: comment
+  });
+  if (res.ok){
+    entry.lhForeman = res.lhForeman;
+    entry.lhComment = res.lhComment;
+    entry.confirmed = true;
+    formLHForeman = res.lhForeman;
+    formLHComment = res.lhComment;
+    confirmationError = "";
+    render();
+    toast("Pemeriksaan terkonfirmasi");
+  } else {
+    confirmationError = res.error || "Gagal mengonfirmasi pemeriksaan.";
+    render();
+    toast("Gagal mengonfirmasi: "+confirmationError, true);
+  }
 }
 
 function renderForm(){
@@ -398,6 +574,7 @@ function renderCorrectiveList(){
 }
 
 async function submitEntry(){
+  if (activeMode !== APP_MODES.OPERATOR) return;
   const area = state.areas.find(a=>a.id===selectedArea);
   const fields = state.templates[area.id]||[];
   if (!formOperator.trim()){ formError="Nama operator wajib diisi."; render(); return; }
@@ -517,54 +694,33 @@ function renderRiwayat(){
   if (sorted.length===0){ html += `<div class="empty">Belum ada riwayat cek sheet.</div>`; return html; }
 
   html += sorted.map(e=>{
-    const fields = (state.templates[e.areaId]||[]).slice().sort(compareOrder);
-    const values = e.values || {};
-    const groups = groupBySection(fields);
-    const anomali = fields.some(f=>{
-      const v = values[f.id]||{};
-      return (f.type==="checkbox" && v.value==="tidak") || (f.type==="rating" && v.rating===1);
-    });
-    const corrective = e.correctiveActions || [];
-
-    let bodyHtml = "";
-    Object.keys(groups).forEach(sec=>{
-      bodyHtml += `<div class="entry-section">${esc(sec)}</div>`;
-      groups[sec].forEach(f=>{
-        const v = values[f.id]||{};
-        let valHtml = "-";
-        if (f.type==="rating" && v.rating) valHtml = `<span class="rt rt${v.rating}">${RATING_LABELS[v.rating]}</span>`;
-        else if (f.type==="checkbox") valHtml = v.value==="ok" ? `<span class="rt rt3">OK</span>` : `<span class="rt rt1">Tidak</span>`;
-        else valHtml = esc(v.value||"-");
-        bodyHtml += `<div class="entry-field-row"><span class="lbl">${esc(f.label)}</span>${valHtml}</div>`;
-        if (f.type==="rating" && v.temuan) bodyHtml += `<div class="entry-temuan">"${esc(v.temuan)}"</div>`;
-      });
-    });
-
-    if (corrective.length>0){
-      bodyHtml += `<div class="entry-section">Tindakan Perbaikan</div>`;
-      corrective.forEach(c=>{
-        bodyHtml += `<div class="entry-field-row" style="flex-direction:column;align-items:flex-start;">
-          <span class="lbl"><b>${esc(c.noWR||'-')}</b> — ${esc(c.deskripsi||'-')}</span>
-          <span class="entry-temuan">PIC: ${esc(c.tanggungJawab||'-')} · Tenggat: ${esc(c.tenggat||'-')}</span>
-        </div>`;
-      });
-    }
-
-    return `<div class="card">
+    const pointCount = (state.templates[e.areaId]||[]).length;
+    const confirmed = isConfirmed(e);
+    const confirmationHtml = activeMode === APP_MODES.OPERATOR && confirmed
+      ? `<div class="history-confirmation">
+        ${e.lhForeman ? `<div>LH/Foreman: <b>${esc(e.lhForeman)}</b></div>` : ""}
+        ${e.lhComment ? `<div class="history-comment">💬 ${esc(e.lhComment)}</div>` : ""}
+      </div>`
+      : "";
+    return `<div class="card history-card" data-open-entry="${esc(e.id)}">
       <div class="entry-header">
         <div>
           <div class="area-name" style="font-size:14px;">${esc(e.areaName)}</div>
-          <div class="entry-meta">${esc(e.operator)} · ${esc(e.shift)} · ${new Date(e.datetime).toLocaleString('id-ID')}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
-          ${anomali ? `<span class="badge warn">⚠ Ada Buruk/Tidak OK</span>` : ""}
-          <span class="badge ${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? 'confirmed':'unconfirmed'}">${e.confirmed===true||e.confirmed==='TRUE'||e.confirmed==='true' ? '✓ Terkonfirmasi':'🟠 Menunggu Konfirmasi'}</span>
+          <span class="badge ${confirmed ? 'confirmed':'unconfirmed'}">${confirmed ? '✓ Terkonfirmasi':'Menunggu Konfirmasi'}</span>
         </div>
       </div>
-      ${bodyHtml}
-      <div class="entry-actions">
-        <button data-delete-entry="${e.id}">Hapus</button>
+      <div class="history-meta">
+        <div class="history-subline">
+          <span>${new Date(e.datetime).toLocaleDateString('id-ID')}</span>
+          <span>${esc(e.shift)}</span>
+          <span>${esc(e.crew)}</span>
+          <span>${pointCount} poin</span>
+        </div>
+        <div class="history-operator">Operator: <b>${esc(e.operator)}</b></div>
       </div>
+      ${confirmationHtml}
     </div>`;
   }).join("");
   return html;
@@ -599,6 +755,33 @@ function exportCSV(){
 
 // ---------- EVENT HANDLERS ----------
 function attachHandlers(){
+  const modeSelect = document.getElementById("modeSelect");
+  if (modeSelect) modeSelect.onchange = (e)=> setMode(e.target.value);
+
+  document.querySelectorAll("[data-open-entry]").forEach(el=>{
+    el.onclick = ()=>{
+      const entry = state.entries.find(item => item.id === el.dataset.openEntry);
+      if (entry) openEntryForConfirmation(entry);
+    };
+  });
+  const closeEntry = document.querySelector("[data-close-entry]");
+  if (closeEntry) closeEntry.onclick = ()=>{
+    selectedEntryId = null;
+    confirmationError = "";
+    render();
+  };
+  const lhForemanInput = document.getElementById("lhForemanInput");
+  if (lhForemanInput) lhForemanInput.oninput = (e)=>{ formLHForeman = e.target.value; };
+  const lhCommentInput = document.getElementById("lhCommentInput");
+  if (lhCommentInput) lhCommentInput.oninput = (e)=>{ formLHComment = e.target.value; };
+  const confirmButton = activeMode === APP_MODES.LH_FOREMAN && selectedEntryId
+    ? document.querySelector("[data-confirm-entry]")
+    : null;
+  if (confirmButton) confirmButton.onclick = (event)=>{
+    event.preventDefault();
+    confirmEntry();
+  };
+
   document.querySelectorAll("[data-open-area]").forEach(el=>{
     el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; formCorrective=[]; formCrew=CREWS[0]; render(); };
   });
@@ -653,11 +836,20 @@ function attachHandlers(){
   if (submitBtn) submitBtn.onclick = submitEntry;
 
   const toggleAddArea = document.querySelector("[data-toggle-addarea]");
-  if (toggleAddArea) toggleAddArea.onclick = ()=>{ showAddAreaForm = !showAddAreaForm; render(); };
+  if (toggleAddArea) toggleAddArea.onclick = ()=>{
+    if (activeMode !== APP_MODES.LH_FOREMAN) return;
+    showAddAreaForm = !showAddAreaForm;
+    render();
+  };
   const cancelAddArea = document.querySelector("[data-cancel-addarea]");
-  if (cancelAddArea) cancelAddArea.onclick = ()=>{ showAddAreaForm=false; render(); };
+  if (cancelAddArea) cancelAddArea.onclick = ()=>{
+    if (activeMode !== APP_MODES.LH_FOREMAN) return;
+    showAddAreaForm=false;
+    render();
+  };
   const saveAddArea = document.querySelector("[data-save-addarea]");
   if (saveAddArea) saveAddArea.onclick = async ()=>{
+    if (activeMode !== APP_MODES.LH_FOREMAN) return;
     const name = document.getElementById("newAreaName").value.trim();
     const code = document.getElementById("newAreaCode").value.trim();
     if (!name){ toast("Nama area wajib diisi", true); return; }
@@ -671,6 +863,7 @@ function attachHandlers(){
   });
   document.querySelectorAll("[data-toggle-active]").forEach(el=>{
     el.onclick = async ()=>{
+      if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const id = el.dataset.toggleActive;
       const area = state.areas.find(a=>a.id===id);
       const res = await apiPost("toggleArea", {id, active: !area.active});
@@ -679,6 +872,7 @@ function attachHandlers(){
   });
   document.querySelectorAll("[data-add-field]").forEach(el=>{
     el.onclick = async ()=>{
+      if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const areaId = el.dataset.addField;
       const labelInput = document.querySelector(`[data-newfield-label="${areaId}"]`);
       const typeSelect = document.querySelector(`[data-newfield-type="${areaId}"]`);
@@ -696,6 +890,7 @@ function attachHandlers(){
   });
   document.querySelectorAll("[data-remove-field]").forEach(el=>{
     el.onclick = async ()=>{
+      if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const [areaId, fieldId] = el.dataset.removeField.split("|");
       const res = await apiPost("removeField", {id: fieldId});
       if (res.ok){ await refreshSilently(); render(); }
