@@ -113,6 +113,15 @@
   .export-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 14px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
   .mode-control{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:12px;color:var(--ink-soft);}
   .mode-control select{width:auto;min-width:150px;}
+  .mode-session{display:flex;align-items:center;gap:8px;margin-left:auto;}
+  .mode-session button{border:1px solid var(--line);background:#fff;color:var(--ink-soft);border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;}
+  .login-backdrop{position:fixed;inset:0;background:rgba(20,42,53,.55);display:grid;place-items:center;padding:16px;z-index:50;}
+  .login-dialog{width:min(100%,400px);background:#fff;border-radius:12px;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,.2);}
+  .login-dialog h2{font-size:20px;margin:0 0 20px;color:var(--ink);}
+  .login-dialog input{margin-bottom:12px;}
+  .login-actions{display:flex;gap:8px;margin-top:6px;}
+  .login-actions button{flex:1;}
+  .login-error{background:var(--red-bg);color:var(--red);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;}
   .readonly-value{background:#FAFAF8;border:1px solid #F0EFEA;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);}
 
   .corrective-row{background:#FAFAF8;border-radius:10px;padding:10px;margin-bottom:8px;position:relative;}
@@ -209,6 +218,11 @@ let formCorrective = [];
 let formLHForeman = "";
 let formLHComment = "";
 let confirmationError = "";
+let lhSession = null;
+let loginModalOpen = false;
+let loginUserId = "";
+let loginPin = "";
+let loginError = "";
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
@@ -250,6 +264,19 @@ function toast(msg, isError){
   setTimeout(()=>el.remove(), 2500);
 }
 
+function handleLHSessionFailure(res){
+  if (!res || res.error !== "Sesi LH/Foreman tidak valid atau sudah berakhir") return false;
+  lhSession = null;
+  activeMode = APP_MODES.OPERATOR;
+  selectedArea = null;
+  selectedEntryId = null;
+  loginModalOpen = false;
+  if (tab === "kelola") tab = "isi";
+  render();
+  toast("Sesi LH/Foreman berakhir. Silakan login kembali.", true);
+  return true;
+}
+
 async function loadData(){
   if (!API_URL || API_URL.indexOf("TEMPEL_URL") === 0) {
     document.getElementById("main").innerHTML = `<div class="setup-banner"><b>Belum terhubung ke Google Sheets.</b> Deploy backend Apps Script, lalu isi API_URL di file ini.</div>`;
@@ -277,7 +304,9 @@ function updateHeaderIdentity(){
   const selectedEntry = state.entries.find(entry => entry.id === selectedEntryId);
   const operator = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.operator : formOperator.trim();
   const crew = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.crew : formCrew;
-  const lhForeman = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.lhForeman : "-";
+  const lhForeman = activeMode === APP_MODES.LH_FOREMAN
+    ? (selectedEntry ? selectedEntry.lhForeman : lhSession?.nama)
+    : "-";
   const confirmed = selectedEntry && (selectedEntry.confirmed === true || selectedEntry.confirmed === "TRUE" || selectedEntry.confirmed === "true");
   document.getElementById("headerOperator").textContent = operator || "-";
   document.getElementById("headerCrew").textContent = crew;
@@ -288,21 +317,85 @@ function updateHeaderIdentity(){
 }
 
 function renderModeControl(){
+  const sessionHtml = activeMode === APP_MODES.LH_FOREMAN && lhSession
+    ? `<div class="mode-session"><span>${esc(lhSession.nama || lhSession.userId)}</span><button type="button" data-logout="1">Keluar LH/Foreman</button></div>`
+    : "";
+  const modalHtml = loginModalOpen ? `<div class="login-backdrop">
+    <div class="login-dialog" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <h2 id="loginTitle">🔐 AKSES LH / FOREMAN</h2>
+      <label for="loginUserId">ID / User ID</label>
+      <input type="text" id="loginUserId" value="${esc(loginUserId)}" autocomplete="username">
+      <label for="loginPin">PIN</label>
+      <input type="password" id="loginPin" value="${esc(loginPin)}" autocomplete="current-password">
+      ${loginError ? `<div class="login-error">${esc(loginError)}</div>` : ""}
+      <div class="login-actions">
+        <button type="button" class="btn-secondary" data-cancel-login="1">Batal</button>
+        <button type="button" class="btn-primary" data-login="1">Masuk</button>
+      </div>
+    </div>
+  </div>` : "";
   return `<div class="mode-control">
     <label for="modeSelect" style="margin:0;">Mode internal</label>
     <select id="modeSelect">
       <option value="${APP_MODES.OPERATOR}" ${activeMode===APP_MODES.OPERATOR?'selected':''}>Operator</option>
       <option value="${APP_MODES.LH_FOREMAN}" ${activeMode===APP_MODES.LH_FOREMAN?'selected':''}>LH / Foreman</option>
     </select>
-  </div>`;
+    ${sessionHtml}
+  </div>` + modalHtml;
 }
 
 function setMode(mode){
+  if (mode === APP_MODES.LH_FOREMAN && activeMode !== APP_MODES.LH_FOREMAN){
+    loginModalOpen = true;
+    loginError = "";
+    render();
+    return;
+  }
   activeMode = mode;
   selectedArea = null;
   selectedEntryId = null;
   confirmationError = "";
   if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
+  render();
+}
+
+function cancelLHLogin(){
+  loginModalOpen = false;
+  loginUserId = "";
+  loginPin = "";
+  loginError = "";
+  render();
+}
+
+async function loginLHForeman(){
+  const userId = loginUserId.trim();
+  const pin = loginPin;
+  if (!userId || !pin){
+    loginError = "User ID dan PIN wajib diisi.";
+    render();
+    return;
+  }
+  const res = await apiPost("loginLHForeman", { userId, pin });
+  if (res.ok === true){
+    lhSession = { userId: res.userId, nama: res.nama, role: res.role, authToken: res.authToken };
+    activeMode = APP_MODES.LH_FOREMAN;
+    loginModalOpen = false;
+    loginUserId = "";
+    loginPin = "";
+    loginError = "";
+    render();
+  } else {
+    loginError = res.error || "Login gagal.";
+    render();
+  }
+}
+
+function logoutLHForeman(){
+  activeMode = APP_MODES.OPERATOR;
+  lhSession = null;
+  selectedArea = null;
+  selectedEntryId = null;
+  loginModalOpen = false;
   render();
 }
 
@@ -468,7 +561,8 @@ async function confirmEntry(){
   const res = await apiPost("confirmEntry", {
     entryId: selectedEntryId,
     lhForeman: name,
-    lhComment: comment
+    lhComment: comment,
+    authToken: lhSession ? lhSession.authToken : ""
   });
   if (res.ok){
     entry.lhForeman = res.lhForeman;
@@ -480,6 +574,7 @@ async function confirmEntry(){
     render();
     toast("Pemeriksaan terkonfirmasi");
   } else {
+    if (handleLHSessionFailure(res)) return;
     confirmationError = res.error || "Gagal mengonfirmasi pemeriksaan.";
     render();
     toast("Gagal mengonfirmasi: "+confirmationError, true);
@@ -758,6 +853,17 @@ function attachHandlers(){
   const modeSelect = document.getElementById("modeSelect");
   if (modeSelect) modeSelect.onchange = (e)=> setMode(e.target.value);
 
+  const cancelLogin = document.querySelector("[data-cancel-login]");
+  if (cancelLogin) cancelLogin.onclick = cancelLHLogin;
+  const loginButton = document.querySelector("[data-login]");
+  if (loginButton) loginButton.onclick = loginLHForeman;
+  const loginUserInput = document.getElementById("loginUserId");
+  if (loginUserInput) loginUserInput.oninput = (e)=>{ loginUserId = e.target.value; };
+  const loginPinInput = document.getElementById("loginPin");
+  if (loginPinInput) loginPinInput.oninput = (e)=>{ loginPin = e.target.value; };
+  const logoutButton = document.querySelector("[data-logout]");
+  if (logoutButton) logoutButton.onclick = logoutLHForeman;
+
   document.querySelectorAll("[data-open-entry]").forEach(el=>{
     el.onclick = ()=>{
       const entry = state.entries.find(item => item.id === el.dataset.openEntry);
@@ -853,8 +959,12 @@ function attachHandlers(){
     const name = document.getElementById("newAreaName").value.trim();
     const code = document.getElementById("newAreaCode").value.trim();
     if (!name){ toast("Nama area wajib diisi", true); return; }
-    const res = await apiPost("addArea", {id:uid("area"), name, code});
+    const res = await apiPost("addArea", {
+      id:uid("area"), name, code,
+      authToken: lhSession ? lhSession.authToken : ""
+    });
     if (res.ok){ await refreshSilently(); showAddAreaForm=false; render(); toast("Area ditambahkan"); }
+    else if (handleLHSessionFailure(res)) return;
     else toast("Gagal: "+(res.error||""), true);
   };
 
@@ -866,8 +976,12 @@ function attachHandlers(){
       if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const id = el.dataset.toggleActive;
       const area = state.areas.find(a=>a.id===id);
-      const res = await apiPost("toggleArea", {id, active: !area.active});
+      const res = await apiPost("toggleArea", {
+        id, active: !area.active,
+        authToken: lhSession ? lhSession.authToken : ""
+      });
       if (res.ok){ await refreshSilently(); render(); }
+      else if (handleLHSessionFailure(res)) return;
     };
   });
   document.querySelectorAll("[data-add-field]").forEach(el=>{
@@ -882,9 +996,11 @@ function attachHandlers(){
       const order = (state.templates[areaId]||[]).length + 1;
       const res = await apiPost("addField", {
         id:uid("f"), areaId, label, type:typeSelect.value, order,
-        section: sectionInput.value.trim() || "Umum"
+        section: sectionInput.value.trim() || "Umum",
+        authToken: lhSession ? lhSession.authToken : ""
       });
       if (res.ok){ await refreshSilently(); render(); }
+      else if (handleLHSessionFailure(res)) return;
       else toast("Gagal: "+(res.error||""), true);
     };
   });
@@ -892,8 +1008,12 @@ function attachHandlers(){
     el.onclick = async ()=>{
       if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const [areaId, fieldId] = el.dataset.removeField.split("|");
-      const res = await apiPost("removeField", {id: fieldId});
+      const res = await apiPost("removeField", {
+        id: fieldId,
+        authToken: lhSession ? lhSession.authToken : ""
+      });
       if (res.ok){ await refreshSilently(); render(); }
+      else if (handleLHSessionFailure(res)) return;
     };
   });
 
