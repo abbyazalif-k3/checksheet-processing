@@ -6,30 +6,38 @@
 <title>Cek Sheet Digital — Pabrik</title>
 <style>
   :root{
-    --ink:#1B2A32; --ink-soft:#5C6B70; --bg:#F5F6F4; --surface:#FFFFFF;
-    --amber:#E8A33D; --amber-dark:#C88420; --green:#3A7D5C; --green-bg:#E8F3ED;
-    --red:#B5442E; --red-bg:#FBEAE6; --line:#E4E2DC;
+    --ink:#1B2A32; --ink-soft:#5C6B70; --bg:#F4F6F8; --surface:#FFFFFF;
+    --amber:#F2B84B; --amber-dark:#C88420; --green:#35C77A; --green-bg:#E8F3ED;
+    --red:#B5442E; --red-bg:#FBEAE6; --line:#D9E0E3;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);}
-  header{background:#142a35;color:#fff;padding:30px 36px 26px;position:sticky;top:0;z-index:20;}
-  header .row{display:flex;align-items:center;max-width:1350px;margin:0 auto;}
-  .brand-block{display:flex;align-items:center;gap:28px;min-width:0;}
-  .brand-logo{width:520px;height:112px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(255,255,255,.7));flex-shrink:0;}
-  .brand-title{border-left:2px solid rgba(196,210,214,.5);padding-left:36px;}
-  header .eyebrow{font-size:21px;letter-spacing:.2em;color:var(--amber);font-weight:600;text-transform:uppercase;}
-  header h1{font-size:52px;line-height:1.05;margin:10px 0 0;font-weight:700;}
+  body{margin:0;font-family:"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+  header{background:#102630;color:#fff;padding:14px 36px 12px;position:sticky;top:0;z-index:20;border-bottom:1px solid #2C4650;box-shadow:0 4px 18px rgba(0,0,0,.18);}
+  header .row{display:flex;align-items:center;max-width:1440px;margin:0 auto;}
+  .brand-block{display:flex;align-items:center;gap:20px;min-width:0;}
+  .brand-logo{width:170px;height:46px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(255,255,255,.7));flex-shrink:0;}
+  .brand-title{border-left:1px solid rgba(196,210,214,.45);padding-left:20px;}
+  header .eyebrow{font-size:13px;letter-spacing:.18em;color:var(--amber);font-weight:700;text-transform:uppercase;}
+  header h1{font-size:28px;line-height:1.05;margin:5px 0 0;font-weight:700;letter-spacing:0;}
   .stamp{display:none;border:2px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;text-align:center;transform:rotate(-3deg);line-height:1.1;}
   .stamp.complete{border-color:#6ee7b7;color:#6ee7b7;}
   .stamp .label{font-size:9px;letter-spacing:.15em;text-transform:uppercase;}
   .stamp .num{font-size:16px;font-weight:700;}
 
-  nav{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:20;}
-  nav button{flex:1;border:none;background:none;padding:16px 4px;font-size:14px;font-weight:600;color:#899398;border-bottom:3px solid transparent;}
-  nav button.active{color:var(--ink);border-color:var(--amber);}
+  .app-body{display:flex;align-items:flex-start;min-height:calc(100vh - 138px);}
+  nav{display:flex;flex:0 0 240px;flex-direction:column;gap:6px;background:#10232C;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:138px;height:calc(100vh - 138px);z-index:10;}
+  nav button{width:100%;border:1px solid transparent;border-radius:8px;background:transparent;text-align:left;padding:13px 14px;font-size:13px;font-weight:600;color:#91A3AA;cursor:pointer;}
+  nav button::before{display:inline-block;width:22px;color:var(--amber);font-size:15px;}
+  nav button[data-tab="isi"]::before{content:"▣";}
+  nav button[data-tab="riwayat"]::before{content:"◷";}
+  nav button[data-tab="kelola"]::before{content:"⚙";}
+  nav button.active{color:#fff;background:#1B3945;border-color:#2C5968;box-shadow:inset 3px 0 var(--amber);}
+  nav button:hover{background:#17323D;color:#fff;}
+  .sidebar-logout{margin-top:auto !important;color:#91A3AA !important;}
+  .sidebar-logout::before{content:"↪" !important;}
 
-  main{padding:36px;max-width:1350px;margin:0 auto;padding-bottom:80px;}
-  .card{background:var(--surface);border-radius:16px;padding:24px;box-shadow:0 2px 10px rgba(27,42,50,.06);margin-bottom:16px;}
+  main{flex:1;min-width:0;padding:32px clamp(20px,4vw,56px) 80px;max-width:1440px;margin:0 auto;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-bottom:16px;}
   .area-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:none;background:var(--surface);cursor:pointer;}
   .area-name{font-weight:600;}
   .area-code{font-size:12px;color:#9aa3a6;font-family:monospace;margin-top:2px;}
@@ -42,7 +50,8 @@
   .badge.unconfirmed{color:var(--red);background:var(--red-bg);}
 
   label{font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;}
-  input[type=text],input[type=number],input[type=date],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;}
+  input[type=text],input[type=number],input[type=date],textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);}
+  input::placeholder,textarea::placeholder{color:#87949A;opacity:1;}
   input:focus,textarea:focus,select:focus{outline:2px solid var(--amber);border-color:var(--amber);}
   .shift-row{display:flex;gap:8px;margin-bottom:14px;}
   .shift-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
@@ -53,7 +62,7 @@
 
   .field-row{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F0EFEA;}
   .field-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
-  .field-label{font-size:13px;color:#374348;font-weight:600;margin-bottom:8px;}
+  .field-label{font-size:13px;color:#263A43;font-weight:600;margin-bottom:8px;}
   .field-check-row{display:flex;justify-content:space-between;align-items:center;}
   .ok-btns{display:flex;gap:6px;}
   .ok-btn{width:64px;padding:8px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;}
@@ -100,14 +109,24 @@
   .entry-temuan{font-size:11.5px;color:#9aa3a6;font-style:italic;margin-top:1px;}
   .entry-actions{display:flex;gap:10px;margin-top:10px;}
   .entry-actions button{font-size:12px;background:none;border:none;color:var(--ink-soft);text-decoration:underline;cursor:pointer;padding:0;}
-  .history-card{cursor:pointer;}
-  .history-meta{margin-top:8px;font-size:12px;color:var(--ink-soft);}
+  .history-card{cursor:pointer;padding:18px 20px;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease;}
+  .history-card:hover{border-color:#B7C7CD;box-shadow:0 5px 16px rgba(27,42,50,.1);transform:translateY(-1px);}
+  .history-card:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+  .history-card .entry-header{gap:16px;}
+  .history-title{display:flex;align-items:center;gap:10px;min-width:0;}
+  .history-dot{width:9px;height:9px;border-radius:50%;background:#8B9AA0;flex:0 0 auto;}
+  .history-card .area-name{font-size:16px;color:#172B34;font-weight:700;}
+  .history-meta{margin-top:7px;font-size:12px;color:#5C6B70;}
   .history-meta b{color:var(--ink);font-weight:700;}
-  .history-subline{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;}
-  .history-subline span:not(:last-child)::after{content:"•";margin-left:8px;color:#b6b9b7;}
-  .history-operator{margin-top:5px;font-size:12px;color:var(--ink-soft);}
-  .history-confirmation{margin-top:8px;font-size:12px;color:var(--ink-soft);}
-  .history-comment{display:-webkit-box;line-clamp:2;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:4px;font-size:12px;color:var(--ink-soft);}
+  .history-subline{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;}
+  .history-subline span:not(:last-child)::after{content:"•";margin-left:10px;color:#9BA9AE;}
+  .history-operator{margin-top:5px;font-size:12px;color:#5C6B70;}
+  .history-bottomline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px;}
+  .history-datetime{color:#5C6B70;}
+  .history-points{color:#344B54;font-weight:700;white-space:nowrap;}
+  .history-confirmation{margin-top:8px;font-size:12px;color:#5C6B70;}
+  .history-comment{display:-webkit-box;line-clamp:2;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:4px;font-size:12px;color:#5C6B70;}
+  .history-chevron{align-self:flex-end;color:#71838A;font-size:24px;line-height:1;}
   .toolbar{display:flex;gap:8px;margin-bottom:12px;}
   .toolbar select{flex:1;}
   .export-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:0 14px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
@@ -131,15 +150,15 @@
   .confirm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px;}
   .confirm-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;}
   .confirm-row span{font-size:13px;font-weight:600;}
-  .header-identity{display:grid;width:100%;max-width:1350px;margin:22px auto 0;padding-top:22px;border-top:1px solid rgba(196,210,214,.45);grid-template-columns:repeat(4,minmax(0,1fr));gap:34px;}
+  .header-identity{display:grid;width:100%;max-width:1350px;margin:10px auto 0;padding-top:10px;border-top:1px solid rgba(196,210,214,.45);grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;}
   .header-identity > div{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11px;}
-  .header-identity span{color:#c4d0d3;font-size:20px;}
-  .header-identity b{color:#fff;font-size:24px;overflow-wrap:anywhere;}
-  #headerStatus{display:inline-flex;align-items:center;align-self:flex-start;gap:10px;color:#fff;border-radius:999px;padding:7px 18px;}
+  .header-identity span{color:#c4d0d3;font-size:12px;}
+  .header-identity b{color:#fff;font-size:16px;overflow-wrap:anywhere;}
+  #headerStatus{display:inline-flex;align-items:center;align-self:flex-start;gap:7px;color:#fff;border-radius:999px;padding:5px 12px;font-size:14px;}
   #headerStatus.confirmed{background:#19a957;}
   #headerStatus.unconfirmed{background:var(--amber-dark);}
-  #headerStatus::before{content:"✓";display:inline-grid;place-items:center;width:24px;height:24px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.75);border-radius:50%;font-size:16px;font-weight:800;}
-  #headerStatus.unconfirmed::before{content:"";width:12px;height:12px;background:#f59e0b;border:none;}
+  #headerStatus::before{content:"✓";display:inline-grid;place-items:center;width:18px;height:18px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.75);border-radius:50%;font-size:12px;font-weight:800;}
+  #headerStatus.unconfirmed::before{content:"";width:10px;height:10px;background:#f59e0b;border:none;}
   @media (max-width:520px){
     .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px;margin-top:16px;padding-top:16px;}
     header{padding:16px 14px 18px;}
@@ -155,6 +174,34 @@
     nav button{padding:12px 4px;font-size:11px;}
     main{padding:18px 14px 60px;}
     .card{padding:18px;border-radius:14px;}
+  }
+  @media (max-width:900px) and (min-width:521px){
+    header{padding:20px 24px 18px;}
+    .brand-logo{width:170px;height:52px;}
+    .brand-title{padding-left:18px;}
+    header .eyebrow{font-size:13px;}
+    header h1{font-size:28px;}
+    .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px;margin-top:18px;padding-top:18px;}
+    .header-identity span{font-size:14px;}
+    .header-identity b{font-size:18px;}
+    nav{flex-basis:190px;padding:20px 10px;}
+    .app-body{min-height:calc(100vh - 166px);}
+    nav{top:166px;height:calc(100vh - 166px);}
+  }
+  @media (max-width:520px){
+    .app-body{display:block;min-height:0;}
+    nav{position:sticky;top:0;width:100%;height:auto;flex-direction:row;gap:4px;overflow-x:auto;padding:8px 10px;background:#10232C;border-right:0;border-bottom:1px solid var(--line);}
+    nav button{flex:1 1 0;width:auto;min-width:0;text-align:center;padding:10px 4px;font-size:11px;white-space:normal;}
+    nav button::before{width:auto;margin-right:5px;}
+    .sidebar-logout{display:block !important;margin-top:0 !important;}
+    main{padding:18px 14px 60px;}
+    .history-card{padding:16px;}
+    .history-card .entry-header{align-items:flex-start;flex-direction:column;gap:8px;}
+    .history-card .badge{align-self:flex-start;}
+    .history-card .area-name{font-size:15px;}
+    .history-bottomline{align-items:flex-start;}
+    .history-datetime{font-size:11px;}
+    .history-chevron{position:absolute;right:16px;bottom:14px;}
   }
 </style>
 </head>
@@ -179,15 +226,18 @@
   </div>
 </header>
 
-<nav>
-  <button data-tab="isi" class="active">Isi Cek Sheet</button>
-  <button data-tab="kelola">Kelola Area</button>
-  <button data-tab="riwayat">Riwayat</button>
-</nav>
+<div class="app-body">
+  <nav>
+    <button data-tab="isi" class="active">Isi Cek Sheet</button>
+    <button data-tab="riwayat">Riwayat</button>
+    <button data-tab="kelola">Kelola Area</button>
+    <button type="button" class="sidebar-logout" data-logout="1">Keluar</button>
+  </nav>
 
-<main id="main">
-  <div class="loading">Memuat data…</div>
-</main>
+  <main id="main">
+    <div class="loading">Memuat data…</div>
+  </main>
+</div>
 
 <script>
 /* ====== KONFIGURASI ====== */
@@ -518,12 +568,12 @@ function renderConfirmation(){
         <div class="entry-meta">Tanggal/Waktu: ${new Date(entry.datetime).toLocaleString('id-ID')}</div>
       </div>
       <div class="card">${renderEntryChecklist(entry)}</div>
-      ${confirmed && entry.lhComment ? `<div class="card">
+      ${confirmed ? `<div class="card">
         <div class="section-title">HASIL KONFIRMASI LH / FOREMAN</div>
-        <div class="entry-field-row"><span class="lbl">LH/Foreman</span><span>${esc(entry.lhForeman || "-")}</span></div>
-        <div class="readonly-value">Komentar: ${esc(entry.lhComment)}</div>
-        <div class="badge confirmed" style="display:inline-block;margin-top:8px;">Status: Terkonfirmasi</div>
-      </div>` : `<div class="card"><div class="badge unconfirmed">Menunggu Konfirmasi</div></div>`}`;
+        ${entry.lhForeman ? `<div class="entry-field-row"><span class="lbl">LH/Foreman</span><span>${esc(entry.lhForeman)}</span></div>` : ""}
+        ${entry.lhComment ? `<div class="readonly-value">Komentar: ${esc(entry.lhComment)}</div>` : ""}
+        <div class="badge confirmed" style="display:inline-block;margin-top:8px;">🟢 Terkonfirmasi</div>
+      </div>` : `<div class="card"><div class="badge pending">🟡 Menunggu Konfirmasi</div></div>`}`;
   }
   return `<button class="link-btn" data-close-entry="1">✕ Kembali ke daftar pemeriksaan</button>
     <div class="card">
@@ -539,7 +589,7 @@ function renderConfirmation(){
       <div class="section-title">KONFIRMASI LH / FOREMAN</div>
       ${confirmed ? `<div class="readonly-value">Nama LH/Foreman: ${esc(entry.lhForeman || "-")}</div>
         <div class="readonly-value" style="margin-top:8px;">Komentar: ${esc(entry.lhComment || "-")}</div>
-        <div class="badge confirmed" style="display:inline-block;margin-top:10px;">Terkonfirmasi</div>` : `
+        <div class="badge confirmed" style="display:inline-block;margin-top:10px;">🟢 Terkonfirmasi</div>` : `
         <label for="lhForemanInput">Nama LH/Foreman</label>
         <input type="text" id="lhForemanInput" value="${esc(formLHForeman)}" placeholder="Masukkan nama">
         <label for="lhCommentInput" style="margin-top:12px;">Komentar LH / Foreman</label>
@@ -799,23 +849,25 @@ function renderRiwayat(){
       : "";
     return `<div class="card history-card" data-open-entry="${esc(e.id)}">
       <div class="entry-header">
-        <div>
-          <div class="area-name" style="font-size:14px;">${esc(e.areaName)}</div>
+        <div class="history-title">
+          <span class="history-dot"></span>
+          <div class="area-name">${esc(e.areaName)}</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
-          <span class="badge ${confirmed ? 'confirmed':'unconfirmed'}">${confirmed ? '✓ Terkonfirmasi':'Menunggu Konfirmasi'}</span>
-        </div>
+        <span class="badge ${confirmed ? 'confirmed':'pending'}">${confirmed ? '🟢 Terkonfirmasi':'🟡 Menunggu Konfirmasi'}</span>
       </div>
       <div class="history-meta">
         <div class="history-subline">
-          <span>${new Date(e.datetime).toLocaleDateString('id-ID')}</span>
-          <span>${esc(e.shift)}</span>
+          <span>Operator: <b>${esc(e.operator)}</b></span>
           <span>${esc(e.crew)}</span>
-          <span>${pointCount} poin</span>
+          <span>${esc(e.shift)}</span>
         </div>
-        <div class="history-operator">Operator: <b>${esc(e.operator)}</b></div>
+        <div class="history-bottomline">
+          <span class="history-datetime">${new Date(e.datetime).toLocaleString('id-ID')}</span>
+          <span class="history-points">${pointCount} poin</span>
+        </div>
       </div>
       ${confirmationHtml}
+      <span class="history-chevron">›</span>
     </div>`;
   }).join("");
   return html;
