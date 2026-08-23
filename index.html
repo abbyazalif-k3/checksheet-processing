@@ -424,7 +424,25 @@ function applyData(data){
   state.templates = templates;
   state.entries = data.entries;
 }
-async function refreshSilently(){ try{ const data = await apiGet(); applyData(data); } catch(e){} }
+async function loadProtectedEntries(){
+  if (activeMode !== APP_MODES.LH_FOREMAN || !lhSession) return true;
+  const res = await runApiAction("getEntries", {
+    authToken: lhSession.authToken
+  }, null, "Memuat...");
+  if (!res || !res.ok){
+    if (handleLHSessionFailure(res)) return false;
+    return false;
+  }
+  state.entries = res.entries || [];
+  return true;
+}
+async function refreshSilently(){
+  try{
+    const data = await apiGet();
+    applyData(data);
+    await loadProtectedEntries();
+  } catch(e){}
+}
 
 function updateHeaderIdentity(){
   const selectedEntry = state.entries.find(entry => entry.id === selectedEntryId);
@@ -506,6 +524,8 @@ async function loginLHForeman(){
   if (res.ok === true){
     lhSession = { userId: res.userId, nama: res.nama, role: res.role, authToken: res.authToken };
     activeMode = APP_MODES.LH_FOREMAN;
+    const entriesLoaded = await loadProtectedEntries();
+    if (!entriesLoaded) return;
     loginModalOpen = false;
     loginUserId = "";
     loginPin = "";

@@ -22,11 +22,7 @@ function doGet(e) {
   var data = {
     areas: sheetToObjects(ss.getSheetByName('Areas')),
     templates: sheetToObjects(ss.getSheetByName('Templates')),
-    entries: sheetToObjects(ss.getSheetByName('Entries')).map(function (en) {
-      try { en.values = JSON.parse(en.valuesJSON || '{}'); } catch (err) { en.values = {}; }
-      try { en.correctiveActions = JSON.parse(en.correctiveActionsJSON || '[]'); } catch (err) { en.correctiveActions = []; }
-      return en;
-    })
+    entries: getFullEntries(ss).map(sanitizeEntryForOperator)
   };
   return jsonResponse(data);
 }
@@ -191,6 +187,11 @@ return jsonResponse({
         CacheService.getScriptCache().remove('lh_session_' + authToken);
         return jsonResponse({ ok: true });
       }
+      case 'getEntries': {
+        var auth = requireLHForeman(body);
+        if (!auth.ok) return jsonResponse(auth);
+        return jsonResponse({ ok: true, entries: getFullEntries(ss) });
+      }
       case 'deleteEntry':
         var auth = requireLHForeman(body);
         if (!auth.ok) return jsonResponse(auth);
@@ -206,6 +207,30 @@ return jsonResponse({
 }
 
 // ---------- Helper functions ----------
+
+function getFullEntries(ss) {
+  return sheetToObjects(ss.getSheetByName('Entries')).map(function (en) {
+    try { en.values = JSON.parse(en.valuesJSON || '{}'); } catch (err) { en.values = {}; }
+    try { en.correctiveActions = JSON.parse(en.correctiveActionsJSON || '[]'); } catch (err) { en.correctiveActions = []; }
+    delete en.valuesJSON;
+    delete en.correctiveActionsJSON;
+    return en;
+  });
+}
+
+function sanitizeEntryForOperator(entry) {
+  return {
+    id: entry.id,
+    areaId: entry.areaId,
+    areaName: entry.areaName,
+    shift: entry.shift,
+    crew: entry.crew,
+    operator: entry.operator,
+    datetime: entry.datetime,
+    confirmed: entry.confirmed,
+    values: entry.values || {}
+  };
+}
 
 function loginLHForeman(ss, userId, pin) {
 
