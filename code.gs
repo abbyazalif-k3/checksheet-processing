@@ -184,7 +184,16 @@ return jsonResponse({
 });
 }
   break;
+      case 'logoutLHForeman': {
+        var auth = requireLHForeman(body);
+        if (!auth.ok) return jsonResponse(auth);
+        var authToken = String(body.data.authToken || '').trim();
+        CacheService.getScriptCache().remove('lh_session_' + authToken);
+        return jsonResponse({ ok: true });
+      }
       case 'deleteEntry':
+        var auth = requireLHForeman(body);
+        if (!auth.ok) return jsonResponse(auth);
         deleteRowById(ss, 'Entries', body.data.id);
         break;
       default:
