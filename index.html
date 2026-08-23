@@ -70,10 +70,54 @@
   .ok-btn.no.sel{background:var(--red);color:#fff;border-color:var(--red);}
 
   .rating-btns{display:flex;gap:6px;}
-  .rating-btn{flex:1;padding:9px 4px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:11px;font-weight:700;cursor:pointer;text-align:center;}
+  .rating-btn{flex:1;min-height:60px;padding:9px 4px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:background .15s ease,border-color .15s ease,transform .15s ease;}
+  .rating-btn:hover{transform:translateY(-1px);}
+  .rating-btn::first-letter{font-size:15px;}
+  .rating-btn[data-r="1"]::before{content:"";display:inline-block;width:9px;height:9px;margin-right:6px;background:var(--red);border-radius:50%;vertical-align:1px;}
+  .rating-btn[data-r="2"]::before{content:"";display:inline-block;width:9px;height:9px;margin-right:6px;background:var(--amber);border-radius:50%;vertical-align:1px;}
+  .rating-btn[data-r="3"]::before{content:"";display:inline-block;width:9px;height:9px;margin-right:6px;background:var(--green);border-radius:50%;vertical-align:1px;}
   .rating-btn[data-r="1"].sel{background:var(--red);color:#fff;border-color:var(--red);}
   .rating-btn[data-r="2"].sel{background:var(--amber);color:#1B2A32;border-color:var(--amber);}
   .rating-btn[data-r="3"].sel{background:var(--green);color:#fff;border-color:var(--green);}
+  .checklist-shell{max-width:820px;margin:0 auto;}
+  .checklist-progress{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--ink);}
+  .progress-track{height:8px;background:#E6EBED;border-radius:99px;overflow:hidden;margin-bottom:18px;}
+  .progress-fill{height:100%;background:var(--amber);border-radius:inherit;transition:width .2s ease;}
+  .checklist-item-card{padding:24px;margin-bottom:14px;}
+  .checklist-item-meta{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--ink-soft);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
+  .checklist-item-number{color:var(--amber-dark);}
+  .checklist-item-card .field-label{font-size:20px;line-height:1.3;color:var(--ink);margin-bottom:18px;}
+  .checklist-item-card .temuan-input{margin-top:16px;}
+  .checklist-item-card .temuan-input textarea{min-height:76px;padding:12px;font-size:14px;resize:vertical;}
+  .checklist-nav{display:flex;gap:10px;}
+  .checklist-nav button{flex:1;min-height:48px;}
+  .checklist-nav button:disabled{opacity:.45;cursor:not-allowed;}
+  .form-meta-card{padding:18px 20px;}
+  .form-meta-card label{margin-bottom:5px;}
+  .form-meta-card .shift-row{margin-bottom:10px;}
+  .form-meta-card .shift-btn{min-height:42px;padding:8px 10px;}
+  .corrective-card{padding:16px 20px;}
+  .corrective-card > label{margin-bottom:8px;}
+  .corrective-card #correctiveList:has(.empty){display:none;}
+  .corrective-card:has(#correctiveList .empty){padding-bottom:12px;}
+  .corrective-card .btn-secondary{padding:10px;}
+  @media (max-width:520px){
+    header{padding-top:12px;padding-bottom:12px;}
+    .header-identity{margin-top:12px;padding-top:12px;gap:10px 12px;}
+    .brand-block{gap:7px;}
+    .brand-logo{height:38px;}
+    .brand-title{padding-left:8px;}
+    header h1{font-size:18px;}
+    .form-meta-card{padding:14px 16px;}
+    .form-meta-card .shift-row{gap:6px;margin-bottom:8px;}
+    .form-meta-card .shift-btn{min-height:44px;padding:8px 6px;}
+    .checklist-item-card{padding:18px;margin-left:0;margin-right:0;}
+    .checklist-item-card .field-label{font-size:18px;}
+    .rating-btns{gap:8px;}
+    .rating-btn{min-height:72px;font-size:11px;line-height:1.25;}
+    .checklist-nav{gap:8px;}
+    .checklist-nav button{font-size:12px;padding:10px 8px;}
+  }
   .temuan-input{margin-top:8px;}
   .temuan-input textarea{font-size:12.5px;}
 
@@ -126,6 +170,12 @@
   .history-points{color:#344B54;font-weight:700;white-space:nowrap;}
   .history-confirmation{margin-top:8px;font-size:12px;color:#5C6B70;}
   .history-comment{display:-webkit-box;line-clamp:2;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:4px;font-size:12px;color:#5C6B70;}
+  .history-findings{margin-top:14px;padding-top:12px;border-top:1px solid #F0EFEA;}
+  .history-findings-title{font-size:13px;font-weight:800;color:var(--red);margin-bottom:8px;}
+  .history-finding{padding:5px 0 5px 2px;font-size:12px;color:var(--ink);}
+  .history-finding-label{font-weight:700;line-height:1.35;}
+  .history-finding-comment{margin:2px 0 0 14px;color:var(--ink-soft);line-height:1.35;}
+  .history-normal{margin-top:14px;padding-top:12px;border-top:1px solid #F0EFEA;font-size:12px;font-weight:700;color:var(--green);}
   .history-chevron{align-self:flex-end;color:#71838A;font-size:24px;line-height:1;}
   .toolbar{display:flex;gap:8px;margin-bottom:12px;}
   .toolbar select{flex:1;}
@@ -212,7 +262,7 @@
     <div class="brand-block">
       <img class="brand-logo" src="logo-header-transparent.png" alt="Archi Indonesia dan MSM TTN">
       <div class="brand-title">
-        <div class="eyebrow">CEK SHEET DIGITAL</div>
+        <div class="eyebrow">CHECKSHEET DIGITAL</div>
         <h1>Processing Plant</h1>
       </div>
     </div>
@@ -253,13 +303,14 @@ const FIELD_TYPES = [
   {value:"number",label:"Angka"},
   {value:"text",label:"Catatan singkat"}
 ];
-const RATING_LABELS = {1:"Buruk",2:"Bagus",3:"Sangat Bagus"};
+const RATING_LABELS = {1:"Tidak Aman",2:"Normal",3:"Sangat Normal"};
 
 let state = { areas: [], templates: {}, entries: [], loaded:false };
 let tab = "isi";
 let selectedArea = null;
 let selectedEntryId = null;
 let formValues = {};
+let activeFieldIndex = 0;
 let formShift = SHIFTS[0];
 let formCrew = CREWS[0];
 let formOperator = "";
@@ -451,6 +502,25 @@ function logoutLHForeman(){
 
 function setTab(t){ tab = t; selectedArea = null; selectedEntryId = null; render(); }
 
+function getChecklistFields(areaId){
+  return (state.templates[areaId]||[]).slice().sort(compareOrder);
+}
+
+function isFieldComplete(field){
+  const value = formValues[field.id] || {};
+  if (field.type === "rating") return value.rating !== undefined;
+  if (field.type === "checkbox") return value.value !== undefined;
+  return value.value !== undefined && value.value !== "";
+}
+
+function setActiveFieldIndex(nextIndex){
+  const area = state.areas.find(a=>a.id===selectedArea);
+  const fields = area ? getChecklistFields(area.id) : [];
+  if (fields.length===0){ activeFieldIndex = 0; return; }
+  activeFieldIndex = Math.max(0, Math.min(nextIndex, fields.length-1));
+  render();
+}
+
 function render(){
   if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
   updateHeaderIdentity();
@@ -576,7 +646,7 @@ function renderConfirmation(){
       </div>` : `<div class="card"><div class="badge pending">🟡 Menunggu Konfirmasi</div></div>`}`;
   }
   return `<button class="link-btn" data-close-entry="1">✕ Kembali ke daftar pemeriksaan</button>
-    <div class="card">
+    <div class="card form-meta-card">
       <div class="area-name">${esc(entry.areaName)}</div>
       <div class="entry-meta">Area: ${esc(entry.areaName)}</div>
       <div class="entry-meta">Operator: ${esc(entry.operator)}</div>
@@ -585,7 +655,7 @@ function renderConfirmation(){
       <div class="entry-meta">Tanggal/Waktu: ${new Date(entry.datetime).toLocaleString('id-ID')}</div>
     </div>
     <div class="card">${renderEntryChecklist(entry)}</div>
-    <div class="card">
+    <div class="card corrective-card">
       <div class="section-title">KONFIRMASI LH / FOREMAN</div>
       ${confirmed ? `<div class="readonly-value">Nama LH/Foreman: ${esc(entry.lhForeman || "-")}</div>
         <div class="readonly-value" style="margin-top:8px;">Komentar: ${esc(entry.lhComment || "-")}</div>
@@ -633,21 +703,23 @@ async function confirmEntry(){
 
 function renderForm(){
   const area = state.areas.find(a=>a.id===selectedArea);
-  const fields = (state.templates[area.id]||[]).slice().sort(compareOrder);
-  const groups = groupBySection(fields);
-  const ratingFields = fields.filter(f=>f.type==="rating");
-  const ratedCount = ratingFields.filter(f=>formValues[f.id]?.rating !== undefined).length;
-
-  let fieldsHtml = "";
-  Object.keys(groups).forEach(sec=>{
-    fieldsHtml += `<div class="section-title">${esc(sec)}</div>`;
-    groups[sec].forEach(f=> fieldsHtml += renderField(f));
-  });
+  const fields = getChecklistFields(area.id);
+  const completedCount = fields.filter(isFieldComplete).length;
+  const currentField = fields[activeFieldIndex] || null;
+  const progressPercent = fields.length ? Math.round(completedCount / fields.length * 100) : 0;
+  const itemHtml = currentField ? `<div class="card checklist-item-card">
+      <div class="checklist-item-meta"><span class="checklist-item-number">Item ${activeFieldIndex + 1} / ${fields.length}</span><span>·</span><span>${esc(currentField.section || "Umum")}</span></div>
+      ${renderField(currentField)}
+    </div>` : `<div class="card"><div class="empty">Area ini belum punya poin cek.</div></div>`;
+  const navigationHtml = fields.length ? `<div class="checklist-nav">
+      <button type="button" class="btn-secondary" data-prev-field="1" ${activeFieldIndex===0?'disabled':''}>← Sebelumnya</button>
+      <button type="button" class="btn-primary" data-next-field="1" ${activeFieldIndex===fields.length-1?'disabled':''}>Berikutnya →</button>
+    </div>` : "";
 
   return `
     <button class="link-btn" data-cancel-form="1">✕ Batal, kembali ke daftar area</button>
     <div class="card"><div class="area-name">${esc(area.name)}</div><div class="area-code">${esc(area.code)}</div></div>
-    <div class="card">
+    <div class="card form-meta-card">
       <label>Shift</label>
       <div class="shift-row">
         ${SHIFTS.map(s=>`<button class="shift-btn ${formShift===s?'active':''}" data-shift="${esc(s)}">${s}</button>`).join("")}
@@ -659,12 +731,14 @@ function renderForm(){
         ${CREWS.map(c=>`<button class="shift-btn ${formCrew===c?'active':''}" data-crew="${esc(c)}">${c}</button>`).join("")}
       </div>
     </div>
-    <div class="card">
-      <div style="font-size:13px;font-weight:700;margin-bottom:12px;">${ratedCount}/${ratingFields.length} poin terisi</div>
-      ${fields.length===0 ? `<div class="empty">Area ini belum punya poin cek.</div>` : fieldsHtml}
+    <div class="checklist-shell">
+      <div class="checklist-progress"><span>${completedCount} / ${fields.length} selesai</span><span>${progressPercent}%</span></div>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="${fields.length}" aria-valuenow="${completedCount}"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
+      ${itemHtml}
+      ${navigationHtml}
     </div>
 
-    <div class="card">
+    <div class="card corrective-card">
       <label style="margin-bottom:10px;">Tindakan Perbaikan &amp; Pencegahan (kalau ada temuan)</label>
       <div id="correctiveList">${renderCorrectiveList()}</div>
       <button class="btn-secondary" data-add-corrective="1">+ Tambah Tindakan</button>
@@ -734,7 +808,7 @@ async function submitEntry(){
     const v = formValues[f.id]||{};
     return v.rating===1 && !String(v.temuan||"").trim();
   });
-  if (missingTemuan.length>0){ formError="Temuan wajib diisi untuk setiap poin dengan rating 1 (Buruk)."; render(); return; }
+  if (missingTemuan.length>0){ formError="Temuan wajib diisi untuk setiap poin dengan rating 1 (Tidak Aman)."; render(); return; }
 
   const missing = fields.filter(f=>{
     const v = formValues[f.id]||{};
@@ -839,7 +913,26 @@ function renderRiwayat(){
   if (sorted.length===0){ html += `<div class="empty">Belum ada riwayat cek sheet.</div>`; return html; }
 
   html += sorted.map(e=>{
-    const pointCount = (state.templates[e.areaId]||[]).length;
+    const templates = (state.templates[e.areaId]||[]).slice().sort(compareOrder);
+    const pointCount = templates.length;
+    const findings = Object.entries(e.values || {})
+      .map(([fieldId, value])=>{
+        const field = templates.find(item=>item.id===fieldId);
+        if (!field || Number(value?.rating)!==1) return null;
+        return {label:field.label, temuan:value?.temuan||"", section:field.section||"", order:field.order};
+      })
+      .filter(Boolean)
+      .sort((a,b)=>compareOrder(a,b));
+    const visibleFindings = findings.slice(0,3);
+    const remainingFindings = findings.length - visibleFindings.length;
+    const findingsHtml = findings.length ? `<div class="history-findings">
+        <div class="history-findings-title">⚠ ${findings.length} Tidak Aman</div>
+        ${visibleFindings.map(f=>`<div class="history-finding">
+          <div class="history-finding-label">• ${esc(f.label)}</div>
+          <div class="history-finding-comment">Temuan: ${esc(f.temuan || "Temuan belum dicatat")}</div>
+        </div>`).join("")}
+        ${remainingFindings>0 ? `<div class="history-finding-comment">+ ${remainingFindings} temuan lainnya</div>` : ""}
+      </div>` : `<div class="history-normal">✓ Semua pemeriksaan normal</div>`;
     const confirmed = isConfirmed(e);
     const confirmationHtml = activeMode === APP_MODES.OPERATOR && confirmed
       ? `<div class="history-confirmation">
@@ -866,6 +959,7 @@ function renderRiwayat(){
           <span class="history-points">${pointCount} poin</span>
         </div>
       </div>
+      ${findingsHtml}
       ${confirmationHtml}
       <span class="history-chevron">›</span>
     </div>`;
@@ -941,7 +1035,7 @@ function attachHandlers(){
   };
 
   document.querySelectorAll("[data-open-area]").forEach(el=>{
-    el.onclick = ()=>{ selectedArea = el.dataset.openArea; formValues={}; formError=""; formCorrective=[]; formCrew=CREWS[0]; render(); };
+    el.onclick = ()=>{ selectedArea = el.dataset.openArea; activeFieldIndex=0; formValues={}; formError=""; formCorrective=[]; formCrew=CREWS[0]; render(); };
   });
   const cancelForm = document.querySelector("[data-cancel-form]");
   if (cancelForm) cancelForm.onclick = ()=>{ selectedArea=null; render(); };
@@ -975,6 +1069,10 @@ function attachHandlers(){
       formValues[id] = { ...cur, temuan: e.target.value };
     };
   });
+  const previousField = document.querySelector("[data-prev-field]");
+  if (previousField) previousField.onclick = ()=> setActiveFieldIndex(activeFieldIndex - 1);
+  const nextField = document.querySelector("[data-next-field]");
+  if (nextField) nextField.onclick = ()=> setActiveFieldIndex(activeFieldIndex + 1);
 
   const addCorrective = document.querySelector("[data-add-corrective]");
   if (addCorrective) addCorrective.onclick = ()=>{
