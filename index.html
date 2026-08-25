@@ -253,9 +253,19 @@
     .history-datetime{font-size:11px;}
     .history-chevron{position:absolute;right:16px;bottom:14px;}
   }
+  .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);}
+  .login-card{width:min(100%,420px);}
+  .login-title{font-size:18px;font-weight:800;color:var(--ink);text-align:center;margin:0 0 20px;letter-spacing:.02em;}
+  .login-role-select{display:flex;gap:8px;margin-bottom:18px;}
+  .login-role-select button{flex:1;}
+  .login-role-select button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .login-hint{text-align:center;color:var(--ink-soft);font-size:13px;padding:8px 0 2px;}
+  .login-back{margin-top:10px;background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;padding:0;text-decoration:underline;}
 </style>
 </head>
 <body>
+
+<div id="authGate" style="display:none;"></div>
 
 <header>
   <div class="row">
@@ -296,7 +306,13 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfq
 const SHIFTS = ["DS (Day Shift)","NS (Night Shift)"];
 const CREWS = ["Crew A","Crew B","Crew C","Crew D"];
 const APP_MODES = { OPERATOR:"OPERATOR", LH_FOREMAN:"LH_FOREMAN" };
-let activeMode = APP_MODES.OPERATOR;
+let activeMode = null;
+/* session: null sebelum login. Setelah login berhasil, berisi
+   { role, token, areaId, areaName } untuk OPERATOR
+   atau { role, token, userId, nama } untuk LH_FOREMAN.
+   Token HANYA disimpan di variabel JS (memory), tidak pernah ke
+   localStorage/sessionStorage/cookie/URL. */
+let session = null;
 const FIELD_TYPES = [
   {value:"rating",label:"Rating (Buruk/Bagus/Sangat Bagus)"},
   {value:"checkbox",label:"Centang (OK/Tidak)"},
@@ -320,9 +336,12 @@ let formLHForeman = "";
 let formLHComment = "";
 let confirmationError = "";
 let lhSession = null;
-let loginModalOpen = false;
+let loginRole = null;      // null | "OPERATOR" | "LH_FOREMAN" (pilihan di layar login)
 let loginUserId = "";
 let loginPin = "";
+let loginAreaId = "";
+let loginAreaPin = "";
+let loginBusy = false;
 let loginError = "";
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
@@ -351,7 +370,6 @@ function compareOrder(a, b){
   return 0;
 }
 
-async function apiGet(){ const res = await fetch(API_URL); return res.json(); }
 async function apiPost(action, data){
   const res = await fetch(API_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action, data}) });
   return res.json();
@@ -365,31 +383,42 @@ function toast(msg, isError){
   setTimeout(()=>el.remove(), 2500);
 }
 
-function handleLHSessionFailure(res){
-  if (!res || res.error !== "Sesi LH/Foreman tidak valid atau sudah berakhir") return false;
-  lhSession = null;
-  activeMode = APP_MODES.OPERATOR;
-  selectedArea = null;
-  selectedEntryId = null;
-  loginModalOpen = false;
-  if (tab === "kelola") tab = "isi";
-  render();
-  toast("Sesi LH/Foreman berakhir. Silakan login kembali.", true);
+const SESSION_EXPIRED_MESSAGES = [
+  "Sesi LH/Foreman tidak valid atau sudah berakhir",
+  "Sesi Operator tidak valid atau sudah berakhir",
+  "Sesi tidak valid atau telah berakhir",
+  "Akses ditolak. Token tidak valid"
+];
+function handleSessionFailure(res){
+  if (!res || !res.error || SESSION_EXPIRED_MESSAGES.indexOf(res.error) === -1) return false;
+  logout();
+  toast("Sesi berakhir. Silakan login kembali.", true);
   return true;
 }
 
+function getDataTokenPayload(){
+  if (!session) return {};
+  return session.role === "OPERATOR" ? { areaToken: session.token } : { authToken: session.token };
+}
+
 async function loadData(){
+  if (!session) return;
   if (!API_URL || API_URL.indexOf("TEMPEL_URL") === 0) {
     document.getElementById("main").innerHTML = `<div class="setup-banner"><b>Belum terhubung ke Google Sheets.</b> Deploy backend Apps Script, lalu isi API_URL di file ini.</div>`;
     return;
   }
   try {
-    const data = await apiGet();
+    const data = await apiPost("getData", getDataTokenPayload());
+    if (!data.ok){
+      if (handleSessionFailure(data)) return;
+      document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data. (${esc(data.error||"")})</div>`;
+      return;
+    }
     applyData(data);
     state.loaded = true;
     render();
   } catch(err){
-    document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data. Cek koneksi internet / URL API / kolom sheet sudah sesuai format baru. (${esc(err.message)})</div>`;
+    document.getElementById("main").innerHTML = `<div class="setup-banner">Gagal memuat data. Cek koneksi internet / URL API. (${esc(err.message)})</div>`;
   }
 }
 function applyData(data){
@@ -399,7 +428,14 @@ function applyData(data){
   state.templates = templates;
   state.entries = data.entries;
 }
-async function refreshSilently(){ try{ const data = await apiGet(); applyData(data); } catch(e){} }
+async function refreshSilently(){
+  if (!session) return;
+  try{
+    const data = await apiPost("getData", getDataTokenPayload());
+    if (!data.ok){ handleSessionFailure(data); return; }
+    applyData(data);
+  } catch(e){}
+}
 
 function updateHeaderIdentity(){
   const selectedEntry = state.entries.find(entry => entry.id === selectedEntryId);
@@ -417,90 +453,200 @@ function updateHeaderIdentity(){
   statusEl.textContent = confirmed ? "Terkonfirmasi" : "Menunggu Konfirmasi";
 }
 
-function renderModeControl(){
-  const sessionHtml = activeMode === APP_MODES.LH_FOREMAN && lhSession
-    ? `<div class="mode-session"><span>${esc(lhSession.nama || lhSession.userId)}</span><button type="button" data-logout="1">Keluar LH/Foreman</button></div>`
-    : "";
-  const modalHtml = loginModalOpen ? `<div class="login-backdrop">
-    <div class="login-dialog" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
-      <h2 id="loginTitle">🔐 AKSES LH / FOREMAN</h2>
-      <label for="loginUserId">ID / User ID</label>
-      <input type="text" id="loginUserId" value="${esc(loginUserId)}" autocomplete="username">
-      <label for="loginPin">PIN</label>
-      <input type="password" id="loginPin" value="${esc(loginPin)}" autocomplete="current-password">
-      ${loginError ? `<div class="login-error">${esc(loginError)}</div>` : ""}
-      <div class="login-actions">
-        <button type="button" class="btn-secondary" data-cancel-login="1">Batal</button>
-        <button type="button" class="btn-primary" data-login="1">Masuk</button>
-      </div>
+// ---------- LAYAR LOGIN (gerbang sebelum aplikasi) ----------
+
+function renderLoginScreen(){
+  const roleButtons = `<div class="login-role-select">
+    <button type="button" class="btn-secondary ${loginRole==='OPERATOR'?'active':''}" data-select-role="OPERATOR">Operator Area</button>
+    <button type="button" class="btn-secondary ${loginRole==='LH_FOREMAN'?'active':''}" data-select-role="LH_FOREMAN">LH / Foreman</button>
+  </div>`;
+
+  let formHtml = `<div class="login-hint">Pilih jenis akses untuk melanjutkan.</div>`;
+  if (loginRole === "OPERATOR"){
+    formHtml = `
+      <label for="opAreaIdInput">Area ID</label>
+      <input type="text" id="opAreaIdInput" value="${esc(loginAreaId)}" autocomplete="off" ${loginBusy?'disabled':''}>
+      <label for="opPinInput">PIN</label>
+      <input type="password" id="opPinInput" value="${esc(loginAreaPin)}" autocomplete="off" ${loginBusy?'disabled':''}>
+      ${loginError ? `<div class="error-box">${esc(loginError)}</div>` : ""}
+      <button type="button" class="btn-primary" data-login-operator="1" ${loginBusy?'disabled':''}>${loginBusy?'Memproses…':'Masuk'}</button>
+      <button type="button" class="login-back" data-back-role="1">‹ Ganti jenis akses</button>`;
+  } else if (loginRole === "LH_FOREMAN"){
+    formHtml = `
+      <label for="lhUserIdInput">User ID</label>
+      <input type="text" id="lhUserIdInput" value="${esc(loginUserId)}" autocomplete="username" ${loginBusy?'disabled':''}>
+      <label for="lhPinInput">PIN</label>
+      <input type="password" id="lhPinInput" value="${esc(loginPin)}" autocomplete="current-password" ${loginBusy?'disabled':''}>
+      ${loginError ? `<div class="error-box">${esc(loginError)}</div>` : ""}
+      <button type="button" class="btn-primary" data-login-lh="1" ${loginBusy?'disabled':''}>${loginBusy?'Memproses…':'Masuk'}</button>
+      <button type="button" class="login-back" data-back-role="1">‹ Ganti jenis akses</button>`;
+  }
+
+  return `<div class="login-page">
+    <div class="card login-card">
+      <h2 class="login-title">LOGIN CHECKSHEET PROCESSING</h2>
+      ${roleButtons}
+      ${formHtml}
     </div>
-  </div>` : "";
-  return `<div class="mode-control">
-    <label for="modeSelect" style="margin:0;">Mode internal</label>
-    <select id="modeSelect">
-      <option value="${APP_MODES.OPERATOR}" ${activeMode===APP_MODES.OPERATOR?'selected':''}>Operator</option>
-      <option value="${APP_MODES.LH_FOREMAN}" ${activeMode===APP_MODES.LH_FOREMAN?'selected':''}>LH / Foreman</option>
-    </select>
-    ${sessionHtml}
-  </div>` + modalHtml;
+  </div>`;
 }
 
-function setMode(mode){
-  if (mode === APP_MODES.LH_FOREMAN && activeMode !== APP_MODES.LH_FOREMAN){
-    loginModalOpen = true;
-    loginError = "";
-    render();
+function selectLoginRole(role){
+  loginRole = role;
+  loginError = "";
+  renderRoot();
+}
+
+async function loginAreaOperator(){
+  const areaId = loginAreaId.trim();
+  const pin = loginAreaPin.trim();
+  if (!areaId || !pin){
+    loginError = "Area ID dan PIN wajib diisi.";
+    renderRoot();
     return;
   }
-  activeMode = mode;
-  selectedArea = null;
-  selectedEntryId = null;
-  confirmationError = "";
-  if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
-  render();
-}
-
-function cancelLHLogin(){
-  loginModalOpen = false;
-  loginUserId = "";
-  loginPin = "";
-  loginError = "";
-  render();
+  loginBusy = true; loginError = "";
+  renderRoot();
+  let res;
+  try {
+    res = await apiPost("loginAreaOperator", { areaId, pin });
+  } catch (err){
+    loginBusy = false;
+    loginError = "Gagal terhubung ke server: " + err.message;
+    renderRoot();
+    return;
+  }
+  loginBusy = false;
+  if (res.ok === true){
+    session = { role: "OPERATOR", token: res.areaToken, areaId: res.resolvedAreaId, areaName: res.areaName };
+    activeMode = APP_MODES.OPERATOR;
+    loginAreaId = ""; loginAreaPin = ""; loginError = ""; loginRole = null;
+    enterApp();
+  } else {
+    loginError = res.error || "Login gagal.";
+    renderRoot();
+  }
 }
 
 async function loginLHForeman(){
   const userId = loginUserId.trim();
-  const pin = loginPin;
+  const pin = loginPin.trim();
   if (!userId || !pin){
     loginError = "User ID dan PIN wajib diisi.";
-    render();
+    renderRoot();
     return;
   }
-  const res = await apiPost("loginLHForeman", { userId, pin });
+  loginBusy = true; loginError = "";
+  renderRoot();
+  let res;
+  try {
+    res = await apiPost("loginLHForeman", { userId, pin });
+  } catch (err){
+    loginBusy = false;
+    loginError = "Gagal terhubung ke server: " + err.message;
+    renderRoot();
+    return;
+  }
+  loginBusy = false;
   if (res.ok === true){
     lhSession = { userId: res.userId, nama: res.nama, role: res.role, authToken: res.authToken };
+    session = { role: "LH_FOREMAN", token: res.authToken, userId: res.userId, nama: res.nama };
     activeMode = APP_MODES.LH_FOREMAN;
-    loginModalOpen = false;
-    loginUserId = "";
-    loginPin = "";
-    loginError = "";
-    render();
+    loginUserId = ""; loginPin = ""; loginError = ""; loginRole = null;
+    enterApp();
   } else {
     loginError = res.error || "Login gagal.";
-    render();
+    renderRoot();
   }
 }
 
-function logoutLHForeman(){
-  activeMode = APP_MODES.OPERATOR;
+function enterApp(){
+  tab = "isi";
+  selectedArea = session.role === "OPERATOR" ? session.areaId : null;
+  selectedEntryId = null;
+  confirmationError = "";
+  state = { areas: [], templates: {}, entries: [], loaded:false };
+  renderRoot();
+}
+
+function logout(){
+  session = null;
   lhSession = null;
+  activeMode = null;
+  tab = "isi";
   selectedArea = null;
   selectedEntryId = null;
-  loginModalOpen = false;
+  formValues = {}; formOperator = ""; formCrew = CREWS[0]; formError = ""; formCorrective = [];
+  state = { areas: [], templates: {}, entries: [], loaded:false };
+  loginRole = null;
+  loginUserId = ""; loginPin = "";
+  loginAreaId = ""; loginAreaPin = "";
+  loginBusy = false; loginError = "";
+  renderRoot();
+}
+
+function attachLoginHandlers(){
+  document.querySelectorAll("[data-select-role]").forEach(el=>{
+    el.onclick = ()=> selectLoginRole(el.dataset.selectRole);
+  });
+  const backRole = document.querySelector("[data-back-role]");
+  if (backRole) backRole.onclick = ()=>{ loginRole = null; loginError = ""; renderRoot(); };
+
+  const opAreaIdInput = document.getElementById("opAreaIdInput");
+  if (opAreaIdInput){
+    opAreaIdInput.oninput = (e)=>{ loginAreaId = e.target.value; };
+    opAreaIdInput.onkeydown = (e)=>{ if (e.key === "Enter") loginAreaOperator(); };
+  }
+  const opPinInput = document.getElementById("opPinInput");
+  if (opPinInput){
+    opPinInput.oninput = (e)=>{ loginAreaPin = e.target.value; };
+    opPinInput.onkeydown = (e)=>{ if (e.key === "Enter") loginAreaOperator(); };
+  }
+  const loginOperatorBtn = document.querySelector("[data-login-operator]");
+  if (loginOperatorBtn) loginOperatorBtn.onclick = loginAreaOperator;
+
+  const lhUserIdInput = document.getElementById("lhUserIdInput");
+  if (lhUserIdInput){
+    lhUserIdInput.oninput = (e)=>{ loginUserId = e.target.value; };
+    lhUserIdInput.onkeydown = (e)=>{ if (e.key === "Enter") loginLHForeman(); };
+  }
+  const lhPinInput = document.getElementById("lhPinInput");
+  if (lhPinInput){
+    lhPinInput.oninput = (e)=>{ loginPin = e.target.value; };
+    lhPinInput.onkeydown = (e)=>{ if (e.key === "Enter") loginLHForeman(); };
+  }
+  const loginLHBtn = document.querySelector("[data-login-lh]");
+  if (loginLHBtn) loginLHBtn.onclick = loginLHForeman;
+}
+
+// ---------- GERBANG UTAMA: LOGIN vs APLIKASI ----------
+function renderRoot(){
+  const authGate = document.getElementById("authGate");
+  const headerEl = document.querySelector("header");
+  const appBody = document.querySelector(".app-body");
+
+  if (!session){
+    headerEl.style.display = "none";
+    appBody.style.display = "none";
+    authGate.style.display = "block";
+    authGate.innerHTML = renderLoginScreen();
+    attachLoginHandlers();
+    return;
+  }
+
+  authGate.style.display = "none";
+  headerEl.style.display = "";
+  appBody.style.display = "";
+
+  if (!state.loaded){
+    document.getElementById("main").innerHTML = `<div class="loading">Memuat data…</div>`;
+    loadData();
+    return;
+  }
   render();
 }
 
-function setTab(t){ tab = t; selectedArea = null; selectedEntryId = null; render(); }
+function setTab(t){ tab = t; selectedArea = session && session.role === "OPERATOR" ? session.areaId : null; selectedEntryId = null; render(); }
 
 function getChecklistFields(areaId){
   return (state.templates[areaId]||[]).slice().sort(compareOrder);
@@ -538,9 +684,9 @@ function render(){
   stampEl.querySelector(".num").textContent = `${doneCount}/${activeAreas.length}`;
 
   const main = document.getElementById("main");
-  if (tab === "isi") main.innerHTML = renderModeControl() + renderIsi();
-  else if (tab === "kelola") main.innerHTML = renderModeControl() + renderKelola();
-  else main.innerHTML = renderModeControl() + renderRiwayat();
+  if (tab === "isi") main.innerHTML = renderIsi();
+  else if (tab === "kelola") main.innerHTML = renderKelola();
+  else main.innerHTML = renderRiwayat();
   attachHandlers();
 }
 
@@ -548,7 +694,11 @@ function render(){
 function renderIsi(){
   if (selectedEntryId) return renderConfirmation();
   if (activeMode === APP_MODES.LH_FOREMAN) return renderEntryList();
-  if (selectedArea) return renderForm();
+  if (selectedArea){
+    const areaExists = state.areas.some(a=>a.id===selectedArea);
+    if (areaExists) return renderForm();
+    selectedArea = null;
+  }
   const activeAreas = state.areas.filter(a=>a.active);
   if (activeAreas.length===0) return `<div class="empty">Belum ada area aktif. Tambahkan lewat tab Kelola Area.</div>`;
   const t = todayKey(new Date());
@@ -694,7 +844,7 @@ async function confirmEntry(){
     render();
     toast("Pemeriksaan terkonfirmasi");
   } else {
-    if (handleLHSessionFailure(res)) return;
+    if (handleSessionFailure(res)) return;
     confirmationError = res.error || "Gagal mengonfirmasi pemeriksaan.";
     render();
     toast("Gagal mengonfirmasi: "+confirmationError, true);
@@ -821,15 +971,19 @@ async function submitEntry(){
   const entry = {
     id: uid("e"), areaId: area.id, areaName: area.name, shift: formShift,
     crew: formCrew, operator: formOperator.trim(), lhForeman: "", datetime: new Date().toISOString(),
-    values: formValues, correctiveActions: formCorrective, confirmed: false
+    values: formValues, correctiveActions: formCorrective, confirmed: false,
+    areaToken: session ? session.token : ""
   };
   toast("Menyimpan…");
   const res = await apiPost("addEntry", entry);
   if (res.ok){
     await refreshSilently();
-    selectedArea=null; formValues={}; formOperator=""; formCrew=CREWS[0]; formError=""; formCorrective=[];
+    selectedArea = session ? session.areaId : null;
+    formValues={}; formOperator=""; formCrew=CREWS[0]; formError=""; formCorrective=[];
     render();
     toast("Cek sheet tersimpan");
+  } else if (handleSessionFailure(res)) {
+    return;
   } else {
     toast("Gagal menyimpan: "+(res.error||""), true);
   }
@@ -902,11 +1056,12 @@ function renderRiwayat(){
     .filter(e => filterArea==="all" || e.areaId===filterArea)
     .slice().sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
 
+  const showAreaFilter = activeMode === APP_MODES.LH_FOREMAN;
   let html = `<div class="toolbar">
-    <select id="filterAreaSelect">
+    ${showAreaFilter ? `<select id="filterAreaSelect">
       <option value="all">Semua Area</option>
       ${state.areas.map(a=>`<option value="${a.id}" ${filterArea===a.id?'selected':''}>${esc(a.name)}</option>`).join("")}
-    </select>
+    </select>` : ""}
     <button class="export-btn" data-export-csv="1">Export CSV</button>
   </div>`;
 
@@ -996,19 +1151,8 @@ function exportCSV(){
 
 // ---------- EVENT HANDLERS ----------
 function attachHandlers(){
-  const modeSelect = document.getElementById("modeSelect");
-  if (modeSelect) modeSelect.onchange = (e)=> setMode(e.target.value);
-
-  const cancelLogin = document.querySelector("[data-cancel-login]");
-  if (cancelLogin) cancelLogin.onclick = cancelLHLogin;
-  const loginButton = document.querySelector("[data-login]");
-  if (loginButton) loginButton.onclick = loginLHForeman;
-  const loginUserInput = document.getElementById("loginUserId");
-  if (loginUserInput) loginUserInput.oninput = (e)=>{ loginUserId = e.target.value; };
-  const loginPinInput = document.getElementById("loginPin");
-  if (loginPinInput) loginPinInput.oninput = (e)=>{ loginPin = e.target.value; };
   const logoutButton = document.querySelector("[data-logout]");
-  if (logoutButton) logoutButton.onclick = logoutLHForeman;
+  if (logoutButton) logoutButton.onclick = logout;
 
   document.querySelectorAll("[data-open-entry]").forEach(el=>{
     el.onclick = ()=>{
@@ -1114,7 +1258,7 @@ function attachHandlers(){
       authToken: lhSession ? lhSession.authToken : ""
     });
     if (res.ok){ await refreshSilently(); showAddAreaForm=false; render(); toast("Area ditambahkan"); }
-    else if (handleLHSessionFailure(res)) return;
+    else if (handleSessionFailure(res)) return;
     else toast("Gagal: "+(res.error||""), true);
   };
 
@@ -1131,7 +1275,7 @@ function attachHandlers(){
         authToken: lhSession ? lhSession.authToken : ""
       });
       if (res.ok){ await refreshSilently(); render(); }
-      else if (handleLHSessionFailure(res)) return;
+      else if (handleSessionFailure(res)) return;
     };
   });
   document.querySelectorAll("[data-add-field]").forEach(el=>{
@@ -1150,7 +1294,7 @@ function attachHandlers(){
         authToken: lhSession ? lhSession.authToken : ""
       });
       if (res.ok){ await refreshSilently(); render(); }
-      else if (handleLHSessionFailure(res)) return;
+      else if (handleSessionFailure(res)) return;
       else toast("Gagal: "+(res.error||""), true);
     };
   });
@@ -1163,7 +1307,7 @@ function attachHandlers(){
         authToken: lhSession ? lhSession.authToken : ""
       });
       if (res.ok){ await refreshSilently(); render(); }
-      else if (handleLHSessionFailure(res)) return;
+      else if (handleSessionFailure(res)) return;
     };
   });
 
@@ -1173,9 +1317,14 @@ function attachHandlers(){
   if (exportBtn) exportBtn.onclick = exportCSV;
   document.querySelectorAll("[data-delete-entry]").forEach(el=>{
     el.onclick = async ()=>{
+      if (activeMode !== APP_MODES.LH_FOREMAN) return;
       if (!confirm("Hapus entri cek sheet ini?")) return;
-      const res = await apiPost("deleteEntry", {id: el.dataset.deleteEntry});
+      const res = await apiPost("deleteEntry", {
+        id: el.dataset.deleteEntry,
+        authToken: lhSession ? lhSession.authToken : ""
+      });
       if (res.ok){ await refreshSilently(); render(); toast("Entri dihapus"); }
+      else if (handleSessionFailure(res)) return;
       else toast("Gagal menghapus: "+(res.error||""), true);
     };
   });
@@ -1183,7 +1332,7 @@ function attachHandlers(){
 
 document.querySelectorAll("nav button").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
-loadData();
+renderRoot();
 </script>
 </body>
 </html>
