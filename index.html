@@ -371,8 +371,33 @@ function compareOrder(a, b){
 }
 
 async function apiPost(action, data){
-  const res = await fetch(API_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action, data}) });
-  return res.json();
+  try {
+    const res = await fetch(API_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({action, data}) });
+    if (!res.ok) return { ok:false, error:"Server tidak dapat memproses permintaan." };
+    return await res.json();
+  } catch (error) {
+    return { ok:false, error:"Gagal terhubung ke server. Periksa koneksi internet lalu coba lagi." };
+  }
+}
+
+const inFlightActions = new Set();
+async function runApiAction(action, data, button, loadingText){
+  if (inFlightActions.has(action)) return null;
+  inFlightActions.add(action);
+  const defaultText = button ? button.textContent : "";
+  if (button){
+    button.disabled = true;
+    button.textContent = loadingText;
+  }
+  try {
+    return await apiPost(action, data);
+  } finally {
+    inFlightActions.delete(action);
+    if (button){
+      button.disabled = false;
+      button.textContent = defaultText;
+    }
+  }
 }
 
 function toast(msg, isError){
@@ -536,18 +561,8 @@ async function loginLHForeman(){
     renderRoot();
     return;
   }
-  loginBusy = true; loginError = "";
-  renderRoot();
-  let res;
-  try {
-    res = await apiPost("loginLHForeman", { userId, pin });
-  } catch (err){
-    loginBusy = false;
-    loginError = "Gagal terhubung ke server: " + err.message;
-    renderRoot();
-    return;
-  }
-  loginBusy = false;
+  const res = await runApiAction("loginLHForeman", { userId, pin }, document.querySelector("[data-login-lh]"), "Memproses...");
+  if (!res) return;
   if (res.ok === true){
     lhSession = { userId: res.userId, nama: res.nama, role: res.role, authToken: res.authToken };
     session = { role: "LH_FOREMAN", token: res.authToken, userId: res.userId, nama: res.nama };
@@ -705,7 +720,7 @@ function renderIsi(){
   return activeAreas.map(a=>{
     const fields = state.templates[a.id] || [];
     const done = state.entries.some(e=>e.areaId===a.id && todayKey(e.datetime)===t);
-    return `<button class="card area-row" data-open-area="${a.id}">
+    return `<button class="card area-row" data-open-area="${esc(a.id)}">
       <div>
         <div class="area-name">${esc(a.name)}</div>
         <div class="area-code">${esc(a.code)}</div>
@@ -828,12 +843,14 @@ async function confirmEntry(){
   if (!name){ confirmationError = "Nama LH/Foreman wajib diisi."; render(); return; }
   if (isConfirmed(entry)){ render(); return; }
   toast("Mengonfirmasi…");
-  const res = await apiPost("confirmEntry", {
+  const confirmButton = document.querySelector("[data-confirm-entry]");
+  const res = await runApiAction("confirmEntry", {
     entryId: selectedEntryId,
     lhForeman: name,
     lhComment: comment,
     authToken: lhSession ? lhSession.authToken : ""
-  });
+  }, confirmButton, "Memproses...");
+  if (!res) return;
   if (res.ok){
     entry.lhForeman = res.lhForeman;
     entry.lhComment = res.lhComment;
@@ -905,10 +922,10 @@ function renderField(f){
     return `<div class="field-row">
       <div class="field-label">${esc(f.label)}</div>
       <div class="rating-btns">
-        ${[1,2,3].map(r=>`<button class="rating-btn ${val.rating===r?'sel':''}" data-rating-field="${f.id}" data-r="${r}">${RATING_LABELS[r]}</button>`).join("")}
+        ${[1,2,3].map(r=>`<button class="rating-btn ${val.rating===r?'sel':''}" data-rating-field="${esc(f.id)}" data-r="${r}">${RATING_LABELS[r]}</button>`).join("")}
       </div>
       <div class="temuan-input">
-        <textarea rows="1" placeholder="Temuan (opsional)" data-temuan-field="${f.id}">${val.temuan??''}</textarea>
+        <textarea rows="1" placeholder="Temuan (opsional)" data-temuan-field="${esc(f.id)}">${esc(val.temuan)}</textarea>
       </div>
     </div>`;
   }
@@ -923,10 +940,10 @@ function renderField(f){
   }
   if (f.type === "number"){
     return `<div class="field-row"><label>${esc(f.label)}</label>
-      <input type="number" data-field-input="${f.id}" value="${val.value??''}"></div>`;
+      <input type="number" data-field-input="${esc(f.id)}" value="${esc(val.value)}"></div>`;
   }
   return `<div class="field-row"><label>${esc(f.label)}</label>
-    <textarea rows="2" data-field-input="${f.id}">${val.value??''}</textarea></div>`;
+    <textarea rows="2" data-field-input="${esc(f.id)}">${esc(val.value)}</textarea></div>`;
 }
 
 function renderCorrectiveList(){
@@ -975,7 +992,9 @@ async function submitEntry(){
     areaToken: session ? session.token : ""
   };
   toast("Menyimpan…");
-  const res = await apiPost("addEntry", entry);
+  const submitButton = document.querySelector("[data-submit-entry]");
+  const res = await runApiAction("addEntry", entry, submitButton, "Menyimpan...");
+  if (!res) return;
   if (res.ok){
     await refreshSilently();
     selectedArea = session ? session.areaId : null;
@@ -1016,26 +1035,26 @@ function renderKelola(){
         listHtml += `<div style="font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;margin:10px 0 4px;">${esc(sec)}</div>`;
         groups[sec].forEach(f=> listHtml += `<div class="field-item">
           <span>${esc(f.label)}<span class="type">${FIELD_TYPES.find(t=>t.value===f.type)?.label||f.type}</span></span>
-          <button class="del-x" data-remove-field="${a.id}|${f.id}">🗑</button>
+          <button class="del-x" data-remove-field="${esc(a.id)}|${esc(f.id)}">🗑</button>
         </div>`);
       });
       inner = `<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:6px;">
-        <button class="link-btn" data-toggle-active="${a.id}" style="text-decoration:underline;">${a.active?'Nonaktifkan area ini':'Aktifkan area ini'}</button>
+        <button class="link-btn" data-toggle-active="${esc(a.id)}" style="text-decoration:underline;">${a.active?'Nonaktifkan area ini':'Aktifkan area ini'}</button>
         ${listHtml}
         <div class="add-field-grid">
-          <input type="text" placeholder="Kategori (mis. General)" data-newfield-section="${a.id}">
-          <select data-newfield-type="${a.id}">
+          <input type="text" placeholder="Kategori (mis. General)" data-newfield-section="${esc(a.id)}">
+          <select data-newfield-type="${esc(a.id)}">
             ${FIELD_TYPES.map(t=>`<option value="${t.value}">${t.label}</option>`).join("")}
           </select>
           <div class="add-field-full">
-            <input type="text" placeholder="Poin cek baru" data-newfield-label="${a.id}" style="flex:1;">
-            <button data-add-field="${a.id}">+ Tambah</button>
+            <input type="text" placeholder="Poin cek baru" data-newfield-label="${esc(a.id)}" style="flex:1;">
+            <button data-add-field="${esc(a.id)}">+ Tambah</button>
           </div>
         </div>
       </div>`;
     }
     return `<div class="card">
-      <button class="area-row" data-toggle-expand="${a.id}" style="width:100%;">
+      <button class="area-row" data-toggle-expand="${esc(a.id)}" style="width:100%;">
         <div>
           <div class="area-name">${esc(a.name)} ${!a.active?'<span class="badge pending" style="margin-left:6px;">Nonaktif</span>':''}</div>
           <div class="area-code">${esc(a.code)}</div>
@@ -1060,7 +1079,7 @@ function renderRiwayat(){
   let html = `<div class="toolbar">
     ${showAreaFilter ? `<select id="filterAreaSelect">
       <option value="all">Semua Area</option>
-      ${state.areas.map(a=>`<option value="${a.id}" ${filterArea===a.id?'selected':''}>${esc(a.name)}</option>`).join("")}
+      ${state.areas.map(a=>`<option value="${esc(a.id)}" ${filterArea===a.id?'selected':''}>${esc(a.name)}</option>`).join("")}
     </select>` : ""}
     <button class="export-btn" data-export-csv="1">Export CSV</button>
   </div>`;
@@ -1253,10 +1272,11 @@ function attachHandlers(){
     const name = document.getElementById("newAreaName").value.trim();
     const code = document.getElementById("newAreaCode").value.trim();
     if (!name){ toast("Nama area wajib diisi", true); return; }
-    const res = await apiPost("addArea", {
+    const res = await runApiAction("addArea", {
       id:uid("area"), name, code,
       authToken: lhSession ? lhSession.authToken : ""
-    });
+    }, saveAddArea, "Menyimpan...");
+    if (!res) return;
     if (res.ok){ await refreshSilently(); showAddAreaForm=false; render(); toast("Area ditambahkan"); }
     else if (handleSessionFailure(res)) return;
     else toast("Gagal: "+(res.error||""), true);
@@ -1270,10 +1290,11 @@ function attachHandlers(){
       if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const id = el.dataset.toggleActive;
       const area = state.areas.find(a=>a.id===id);
-      const res = await apiPost("toggleArea", {
+      const res = await runApiAction("toggleArea", {
         id, active: !area.active,
         authToken: lhSession ? lhSession.authToken : ""
-      });
+      }, el, "Memproses...");
+      if (!res) return;
       if (res.ok){ await refreshSilently(); render(); }
       else if (handleSessionFailure(res)) return;
     };
@@ -1288,11 +1309,12 @@ function attachHandlers(){
       const label = labelInput.value.trim();
       if (!label) return;
       const order = (state.templates[areaId]||[]).length + 1;
-      const res = await apiPost("addField", {
+      const res = await runApiAction("addField", {
         id:uid("f"), areaId, label, type:typeSelect.value, order,
         section: sectionInput.value.trim() || "Umum",
         authToken: lhSession ? lhSession.authToken : ""
-      });
+      }, el, "Menambahkan...");
+      if (!res) return;
       if (res.ok){ await refreshSilently(); render(); }
       else if (handleSessionFailure(res)) return;
       else toast("Gagal: "+(res.error||""), true);
@@ -1302,10 +1324,11 @@ function attachHandlers(){
     el.onclick = async ()=>{
       if (activeMode !== APP_MODES.LH_FOREMAN) return;
       const [areaId, fieldId] = el.dataset.removeField.split("|");
-      const res = await apiPost("removeField", {
+      const res = await runApiAction("removeField", {
         id: fieldId,
         authToken: lhSession ? lhSession.authToken : ""
-      });
+      }, el, "Menghapus...");
+      if (!res) return;
       if (res.ok){ await refreshSilently(); render(); }
       else if (handleSessionFailure(res)) return;
     };
@@ -1319,10 +1342,11 @@ function attachHandlers(){
     el.onclick = async ()=>{
       if (activeMode !== APP_MODES.LH_FOREMAN) return;
       if (!confirm("Hapus entri cek sheet ini?")) return;
-      const res = await apiPost("deleteEntry", {
+      const res = await runApiAction("deleteEntry", {
         id: el.dataset.deleteEntry,
         authToken: lhSession ? lhSession.authToken : ""
-      });
+      }, el, "Menghapus...");
+      if (!res) return;
       if (res.ok){ await refreshSilently(); render(); toast("Entri dihapus"); }
       else if (handleSessionFailure(res)) return;
       else toast("Gagal menghapus: "+(res.error||""), true);
