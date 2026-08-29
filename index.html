@@ -302,6 +302,56 @@
     .checklist-item-card .field-label{font-size:16px;}
     .rating-btn{min-height:60px;font-size:11px;}
   }
+  /* Mobile Web App Google Apps Script: do not rely on media queries for the app layout. */
+  body.mobile-layout{width:100%;max-width:100%;overflow-x:hidden;}
+  body.mobile-layout header{padding:6px 10px 8px;}
+  body.mobile-layout header .row{width:100%;}
+  body.mobile-layout .brand-block{gap:8px;}
+  body.mobile-layout .brand-logo{width:104px;height:32px;}
+  body.mobile-layout .brand-title{padding-left:8px;}
+  body.mobile-layout header .eyebrow{font-size:8px;letter-spacing:.12em;}
+  body.mobile-layout header h1{font-size:17px;margin-top:3px;}
+  body.mobile-layout .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;margin-top:6px;padding-top:6px;}
+  body.mobile-layout .header-identity > div{gap:1px;font-size:10px;line-height:1.15;}
+  body.mobile-layout .header-identity span{font-size:11px;}
+  body.mobile-layout .header-identity b{font-size:12px;line-height:1.15;}
+  body.mobile-layout #headerStatus{padding:3px 7px;font-size:10px;}
+  body.mobile-layout #headerStatus::before{width:14px;height:14px;font-size:9px;}
+  body.mobile-layout .app-body{display:block;width:100%;min-height:0;}
+  body.mobile-layout nav{position:sticky;top:0;width:100%;height:auto;flex:none;flex-direction:row;gap:4px;overflow-x:auto;padding:6px;border-right:none;border-bottom:1px solid var(--line);}
+  body.mobile-layout nav button{flex:1 1 0;min-width:0;width:auto;min-height:44px;padding:9px 5px;text-align:center;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  body.mobile-layout nav button::before{width:auto;margin-right:4px;}
+  body.mobile-layout .sidebar-logout{display:block !important;margin-top:0 !important;}
+  body.mobile-layout main{width:100%;max-width:none;margin:0;padding:10px 8px 40px;}
+  body.mobile-layout .card,
+  body.mobile-layout .checklist-shell{width:100%;max-width:none;box-sizing:border-box;}
+  body.mobile-layout .card{margin-left:0;margin-right:0;padding:14px;}
+  body.mobile-layout .checklist-shell{margin:0;}
+  body.mobile-layout .checklist-item-card{width:100%;padding:14px;margin-bottom:10px;}
+  body.mobile-layout .checklist-item-card .field-label{font-size:16px;line-height:1.4;}
+  body.mobile-layout .rating-btns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+  body.mobile-layout .rating-btn{width:100%;min-width:0;min-height:60px;padding:8px 4px;font-size:11px;line-height:1.2;}
+  body.mobile-layout .form-meta-card{padding:14px 16px;}
+  body.mobile-layout .form-meta-card .shift-row{gap:6px;margin-bottom:8px;}
+  body.mobile-layout .form-meta-card .shift-btn,
+  body.mobile-layout .form-meta-card input,
+  body.mobile-layout .btn-primary,
+  body.mobile-layout .btn-secondary,
+  body.mobile-layout .btn-dark,
+  body.mobile-layout .checklist-nav button{min-height:44px;}
+  body.mobile-layout .form-meta-card .shift-btn{padding:8px 6px;}
+  body.mobile-layout .form-meta-card input{font-size:14px;}
+  body.mobile-layout .checklist-nav{gap:8px;}
+  body.mobile-layout .checklist-nav button{font-size:12px;padding:10px 8px;}
+  body.mobile-layout .history-card{width:100%;padding:14px;}
+  body.mobile-layout .history-card .entry-header{align-items:flex-start;flex-direction:column;gap:8px;}
+  body.mobile-layout .history-card .badge{align-self:flex-start;}
+  body.mobile-layout .history-card .area-name{font-size:15px;}
+  body.mobile-layout .history-bottomline{align-items:flex-start;}
+  body.mobile-layout .history-datetime{font-size:11px;}
+  body.mobile-layout .history-chevron{position:absolute;right:16px;bottom:14px;}
+  body.mobile-layout .toolbar{min-width:0;}
+  body.mobile-layout .toolbar select{min-width:0;}
   .login-page{position:relative;isolation:isolate;min-height:100vh;display:flex;align-items:center;padding:clamp(24px,5vw,72px);overflow:hidden;background:#071822 url("https://raw.githubusercontent.com/abbyazalif-k3/checksheet-processing/main/login-plant.jpg") center center/cover no-repeat;}
   .login-page::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(4,18,31,.97) 0%,rgba(7,27,43,.91) 34%,rgba(8,27,40,.59) 61%,rgba(7,20,29,.18) 100%);}
   .login-page::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.12),transparent 42%,rgba(0,0,0,.28));}
@@ -380,6 +430,24 @@
 </div>
 
 <script>
+function applyResponsiveMode(){
+  const isTouchDevice =
+    navigator.maxTouchPoints > 0 ||
+    'ontouchstart' in window ||
+    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+
+  const isSmallViewport = window.innerWidth <= 768;
+
+  document.body.classList.toggle(
+    'mobile-layout',
+    isTouchDevice || isSmallViewport
+  );
+}
+
+applyResponsiveMode();
+window.addEventListener('resize', applyResponsiveMode);
+window.addEventListener('orientationchange', applyResponsiveMode);
+
 /* ====== KONFIGURASI ====== */
 const API_URL = "https://script.google.com/macros/s/AKfycbzo9BW1_CWC509FBE-XcBfqKvpZKrCAaocJa8TjmaZ7x1ak7IDmvbU1RuKO2Rm9Chk/exec";
 
