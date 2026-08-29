@@ -253,6 +253,55 @@
     .history-datetime{font-size:11px;}
     .history-chevron{position:absolute;right:16px;bottom:14px;}
   }
+  @media (max-width:768px){
+    body{width:100%;max-width:100%;overflow-x:hidden;}
+    header{padding:6px 10px 8px;}
+    header .row{width:100%;}
+    .brand-block{gap:8px;}
+    .brand-logo{width:104px;height:32px;}
+    .brand-title{padding-left:8px;}
+    header .eyebrow{font-size:8px;letter-spacing:.12em;}
+    header h1{font-size:17px;margin-top:3px;}
+    .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;margin-top:6px;padding-top:6px;}
+    .header-identity > div{gap:1px;font-size:10px;line-height:1.15;}
+    .header-identity span{font-size:11px;}
+    .header-identity b{font-size:12px;line-height:1.15;}
+    #headerStatus{padding:3px 7px;font-size:10px;}
+    #headerStatus::before{width:14px;height:14px;font-size:9px;}
+    .app-body{display:block;width:100%;min-height:0;}
+    nav{position:sticky;top:0;width:100%;height:auto;flex:none;flex-direction:row;gap:4px;overflow-x:auto;padding:6px;border-right:none;border-bottom:1px solid var(--line);}
+    nav button{flex:1 1 0;min-width:0;width:auto;min-height:44px;padding:9px 5px;text-align:center;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    nav button::before{width:auto;margin-right:4px;}
+    .sidebar-logout{display:block !important;margin-top:0 !important;}
+    main{width:100%;max-width:none;margin:0;padding:10px 8px 40px;}
+    .card,.checklist-shell{width:100%;max-width:none;box-sizing:border-box;}
+    .card{margin-left:0;margin-right:0;padding:14px;}
+    .checklist-shell{margin:0;}
+    .checklist-item-card{width:100%;padding:14px;margin-bottom:10px;}
+    .checklist-item-card .field-label{font-size:16px;line-height:1.4;}
+    .rating-btns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+    .rating-btn{width:100%;min-width:0;min-height:60px;padding:8px 4px;font-size:11px;line-height:1.2;}
+    .form-meta-card .shift-btn{min-height:44px;}
+    .form-meta-card input{min-height:44px;font-size:14px;}
+    .btn-primary,.btn-secondary,.btn-dark,.checklist-nav button{min-height:44px;}
+    .history-card{width:100%;padding:14px;}
+    .history-card .entry-header{gap:8px;}
+    .toolbar{min-width:0;}
+    .toolbar select{min-width:0;}
+  }
+  @media (max-width:480px){
+    .brand-logo{width:92px;height:28px;}
+    .brand-title{padding-left:7px;}
+    header h1{font-size:16px;}
+    .header-identity span{font-size:10px;}
+    .header-identity b{font-size:11px;}
+    nav{gap:4px;padding:6px;}
+    nav button{padding:10px 4px;font-size:11px;}
+    main{padding:10px 8px 36px;}
+    .card,.checklist-item-card{padding:14px;}
+    .checklist-item-card .field-label{font-size:16px;}
+    .rating-btn{min-height:60px;font-size:11px;}
+  }
   .login-page{position:relative;isolation:isolate;min-height:100vh;display:flex;align-items:center;padding:clamp(24px,5vw,72px);overflow:hidden;background:#071822 url("https://raw.githubusercontent.com/abbyazalif-k3/checksheet-processing/main/login-plant.jpg") center center/cover no-repeat;}
   .login-page::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(4,18,31,.97) 0%,rgba(7,27,43,.91) 34%,rgba(8,27,40,.59) 61%,rgba(7,20,29,.18) 100%);}
   .login-page::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.12),transparent 42%,rgba(0,0,0,.28));}
@@ -341,8 +390,10 @@ let activeMode = null;
 /* session: null sebelum login. Setelah login berhasil, berisi
    { role, token, areaId, areaName } untuk OPERATOR
    atau { role, token, userId, nama } untuk LH_FOREMAN.
-   Token HANYA disimpan di variabel JS (memory), tidak pernah ke
-   localStorage/sessionStorage/cookie/URL. */
+
+   Token disimpan sementara di memory dan sessionStorage agar
+   session tetap bertahan saat halaman di-refresh.
+   PIN tidak pernah disimpan. */
 let session = null;
 const FIELD_TYPES = [
   {value:"rating",label:"Rating (Buruk/Bagus/Sangat Bagus)"},
@@ -374,6 +425,47 @@ let loginAreaId = "";
 let loginAreaPin = "";
 let loginBusy = false;
 let loginError = "";
+
+function saveSession(){
+  if (!session){
+    sessionStorage.removeItem("checksheetSession");
+    return;
+  }
+  const storedSession = session.role === "LH_FOREMAN"
+    ? { role:session.role, token:session.token, userId:session.userId, nama:session.nama }
+    : { role:session.role, token:session.token, areaId:session.areaId, areaName:session.areaName };
+  sessionStorage.setItem("checksheetSession", JSON.stringify(storedSession));
+}
+
+function restoreSession(){
+  try {
+    const raw = sessionStorage.getItem("checksheetSession");
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (!saved || !saved.role || !saved.token || (saved.role !== "OPERATOR" && saved.role !== "LH_FOREMAN")){
+      sessionStorage.removeItem("checksheetSession");
+      return false;
+    }
+    session = saved.role === "LH_FOREMAN"
+      ? { role:saved.role, token:saved.token, userId:saved.userId || "", nama:saved.nama || "" }
+      : { role:saved.role, token:saved.token, areaId:saved.areaId || "", areaName:saved.areaName || "" };
+    if (saved.role === "LH_FOREMAN"){
+      lhSession = { userId:session.userId, nama:session.nama, role:session.role, authToken:session.token };
+      activeMode = APP_MODES.LH_FOREMAN;
+    } else {
+      lhSession = null;
+      activeMode = APP_MODES.OPERATOR;
+    }
+    return true;
+  } catch(e){
+    sessionStorage.removeItem("checksheetSession");
+    return false;
+  }
+}
+
+function clearStoredSession(){
+  sessionStorage.removeItem("checksheetSession");
+}
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
@@ -582,6 +674,7 @@ async function loginAreaOperator(){
     session = { role: "OPERATOR", token: res.areaToken, areaId: res.resolvedAreaId, areaName: res.areaName };
     activeMode = APP_MODES.OPERATOR;
     loginAreaId = ""; loginAreaPin = ""; loginError = ""; loginRole = null;
+    saveSession();
     enterApp();
   } else {
     loginError = res.error || "Login gagal.";
@@ -604,6 +697,7 @@ async function loginLHForeman(){
     session = { role: "LH_FOREMAN", token: res.authToken, userId: res.userId, nama: res.nama };
     activeMode = APP_MODES.LH_FOREMAN;
     loginUserId = ""; loginPin = ""; loginError = ""; loginRole = null;
+    saveSession();
     enterApp();
   } else {
     loginError = res.error || "Login gagal.";
@@ -621,6 +715,7 @@ function enterApp(){
 }
 
 function logout(){
+  clearStoredSession();
   session = null;
   lhSession = null;
   activeMode = null;
@@ -1400,6 +1495,7 @@ function attachHandlers(){
 
 document.querySelectorAll("nav button").forEach(b=>{ b.onclick = ()=> setTab(b.dataset.tab); });
 
+restoreSession();
 renderRoot();
 </script>
 </body>
