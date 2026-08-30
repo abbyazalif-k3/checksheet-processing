@@ -482,7 +482,6 @@ let formCrew = CREWS[0];
 let formOperator = "";
 let formError = "";
 let formCorrective = [];
-let formLHForeman = "";
 let formLHComment = "";
 let confirmationError = "";
 let lhSession = null;
@@ -783,6 +782,15 @@ function enterApp(){
 }
 
 function logout(){
+  const currentSession = session;
+  if (currentSession){
+    const logoutAction = currentSession.role === "LH_FOREMAN"
+      ? { action:"logoutLHForeman", data:{ authToken:currentSession.token } }
+      : { action:"logoutOperator", data:{ areaToken:currentSession.token } };
+    // Best-effort revoke di server; UI tetap segera kembali ke layar login.
+    apiPost(logoutAction.action, logoutAction.data).catch(()=>{});
+  }
+
   clearStoredSession();
   session = null;
   lhSession = null;
@@ -791,6 +799,8 @@ function logout(){
   selectedArea = null;
   selectedEntryId = null;
   formValues = {}; formOperator = ""; formCrew = CREWS[0]; formError = ""; formCorrective = [];
+  formLHComment = "";
+  confirmationError = "";
   state = { areas: [], templates: {}, entries: [], loaded:false };
   loginRole = null;
   loginUserId = ""; loginPin = "";
@@ -947,7 +957,6 @@ function isConfirmed(entry){
 
 function openEntryForConfirmation(entry){
   selectedEntryId = entry.id;
-  formLHForeman = entry.lhForeman || "";
   formLHComment = entry.lhComment || "";
   confirmationError = "";
   tab = "isi";
@@ -1032,10 +1041,11 @@ function renderConfirmation(){
       ${confirmed ? `<div class="readonly-value">Nama LH/Foreman: ${esc(entry.lhForeman || "-")}</div>
         <div class="readonly-value" style="margin-top:8px;">Komentar: ${esc(entry.lhComment || "-")}</div>
         <div class="badge confirmed" style="display:inline-block;margin-top:10px;">🟢 Terkonfirmasi</div>` : `
-        <label for="lhForemanInput">Nama LH/Foreman</label>
-        <input type="text" id="lhForemanInput" value="${esc(formLHForeman)}" placeholder="Masukkan nama">
+        <div class="readonly-value">
+          Nama LH/Foreman: ${esc(lhSession?.nama || "-")}
+        </div>
         <label for="lhCommentInput" style="margin-top:12px;">Komentar LH / Foreman</label>
-        <textarea id="lhCommentInput" rows="4" placeholder="Tuliskan komentar terhadap hasil checksheet...">${esc(formLHComment)}</textarea>
+        <textarea id="lhCommentInput" rows="4" maxlength="1000" placeholder="Tuliskan komentar terhadap hasil checksheet...">${esc(formLHComment)}</textarea>
         ${confirmationError ? `<div class="error-box" style="margin-top:12px;margin-bottom:0;">${esc(confirmationError)}</div>` : ""}
         <button class="btn-primary" data-confirm-entry="1" style="margin-top:12px;">Konfirmasi Pemeriksaan</button>`}
     </div>`;
@@ -1043,27 +1053,41 @@ function renderConfirmation(){
 
 async function confirmEntry(){
   if (activeMode !== APP_MODES.LH_FOREMAN) return;
+
   const entry = state.entries.find(item => item.id === selectedEntryId);
-  const name = formLHForeman.trim();
   const comment = formLHComment.trim();
+
   if (!entry) return;
-  if (!name){ confirmationError = "Nama LH/Foreman wajib diisi."; render(); return; }
-  if (isConfirmed(entry)){ render(); return; }
+  if (!lhSession?.authToken) {
+    confirmationError = "Sesi LH/Foreman tidak tersedia. Silakan login kembali.";
+    render();
+    return;
+  }
+  if (!lhSession?.nama) {
+    confirmationError = "Nama akun LH/Foreman tidak tersedia.";
+    render();
+    return;
+  }
+  if (isConfirmed(entry)){
+    render();
+    return;
+  }
+
   toast("Mengonfirmasi…");
   const confirmButton = document.querySelector("[data-confirm-entry]");
   const res = await runApiAction("confirmEntry", {
     entryId: selectedEntryId,
-    lhForeman: name,
     lhComment: comment,
-    authToken: lhSession ? lhSession.authToken : ""
+    authToken: lhSession.authToken
   }, confirmButton, "Memproses...");
+
   if (!res) return;
+
   if (res.ok){
     entry.lhForeman = res.lhForeman;
     entry.lhComment = res.lhComment;
     entry.confirmed = true;
-    formLHForeman = res.lhForeman;
-    formLHComment = res.lhComment;
+    formLHComment = res.lhComment || "";
     confirmationError = "";
     render();
     toast("Pemeriksaan terkonfirmasi");
@@ -1224,7 +1248,9 @@ function renderKelola(){
   if (showAddAreaForm){
     html += `<div class="card">
       <input type="text" id="newAreaName" placeholder="Nama area (mis. Cyanide Tank Area)" style="margin-bottom:8px;">
-      <input type="text" id="newAreaCode" placeholder="Kode form (mis. TT-PRO-FO-XX-XXX)" style="font-family:monospace;margin-bottom:10px;">
+      <input type="text" id="newAreaCode" placeholder="Kode form (mis. TT-PRO-FO-XX-XXX)" style="font-family:monospace;margin-bottom:8px;">
+      <input type="password" id="newAreaPin" inputmode="numeric" autocomplete="new-password" placeholder="PIN Operator area" style="margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--ink-soft);margin:-4px 0 10px;">PIN ini dipakai Operator saat login ke area.</div>
       <div style="display:flex;gap:8px;">
         <button class="btn-secondary" data-cancel-addarea="1">Batal</button>
         <button class="btn-primary" data-save-addarea="1">Simpan Area</button>
@@ -1392,8 +1418,6 @@ function attachHandlers(){
     confirmationError = "";
     render();
   };
-  const lhForemanInput = document.getElementById("lhForemanInput");
-  if (lhForemanInput) lhForemanInput.oninput = (e)=>{ formLHForeman = e.target.value; };
   const lhCommentInput = document.getElementById("lhCommentInput");
   if (lhCommentInput) lhCommentInput.oninput = (e)=>{ formLHComment = e.target.value; };
   const confirmButton = activeMode === APP_MODES.LH_FOREMAN && selectedEntryId
@@ -1476,16 +1500,34 @@ function attachHandlers(){
   const saveAddArea = document.querySelector("[data-save-addarea]");
   if (saveAddArea) saveAddArea.onclick = async ()=>{
     if (activeMode !== APP_MODES.LH_FOREMAN) return;
-    const name = document.getElementById("newAreaName").value.trim();
-    const code = document.getElementById("newAreaCode").value.trim();
-    if (!name){ toast("Nama area wajib diisi", true); return; }
+    const name = document.getElementById("newAreaName")?.value.trim() || "";
+    const code = document.getElementById("newAreaCode")?.value.trim() || "";
+    const pin = document.getElementById("newAreaPin")?.value.trim() || "";
+
+    if (!name){
+      toast("Nama area wajib diisi", true);
+      return;
+    }
+    if (!pin){
+      toast("PIN Operator wajib diisi", true);
+      return;
+    }
+
     const res = await runApiAction("addArea", {
-      id:uid("area"), name, code,
+      id:uid("area"),
+      name,
+      code,
+      pin,
       authToken: lhSession ? lhSession.authToken : ""
     }, saveAddArea, "Menyimpan...");
+
     if (!res) return;
-    if (res.ok){ await refreshSilently(); showAddAreaForm=false; render(); toast("Area ditambahkan"); }
-    else if (handleSessionFailure(res)) return;
+    if (res.ok){
+      await refreshSilently();
+      showAddAreaForm=false;
+      render();
+      toast("Area ditambahkan");
+    } else if (handleSessionFailure(res)) return;
     else toast("Gagal: "+(res.error||""), true);
   };
 

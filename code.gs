@@ -1,220 +1,229 @@
 /**
- * BACKEND CEK SHEET DIGITAL — Google Apps Script (v2 — format sesuai kertas)
+ * BACKEND CHECKSHEET DIGITAL — Google Apps Script
  * ------------------------------------------------------------------------
- * PENTING kalau kamu upgrade dari versi lama: sheet lama HARUS ditambah kolom baru.
+ * Struktur Sheet:
  *
- * Sheet "Areas"     -> id | name | code | active                     (tidak berubah)
- * Sheet "Templates" -> id | areaId | section | label | type | order  (TAMBAH kolom "section" setelah areaId)
- * Sheet "Entries"    -> id | areaId | areaName | shift | operator | datetime | valuesJSON | correctiveActionsJSON | confirmed
- *                       (TAMBAH kolom "correctiveActionsJSON" dan "confirmed" di akhir)
+ * Areas     -> id | name | code | active | pin
+ * Templates -> id | areaId | section | label | type | order
+ * Users     -> userid | nama | role | pin | aktif
+ * Entries   -> id | areaId | areaName | shift | crew | operator |
+ *             lhForeman | datetime | valuesJSON | correctiveActionsJSON |
+ *             confirmed | lhComment
  *
- * Cara tambah kolom di sheet yang sudah ada:
- * - Buka sheet Templates, klik kanan kolom B (areaId) -> Insert 1 column right -> beri nama header "section"
- * - Buka sheet Entries, tambahkan 2 kolom baru di akhir (setelah valuesJSON): "correctiveActionsJSON" dan "confirmed"
+ * Catatan:
+ * - Kolom Areas.pin dipakai untuk login Operator berdasarkan Area ID + PIN.
+ * - Users.role harus LH atau FOREMAN untuk akses verifikasi/kelola.
+ * - PIN tidak pernah dikirim ke frontend dan tidak disimpan di sessionStorage.
+ * - Frontend menggunakan POST action=getData, bukan GET, sehingga data tidak
+ *   terbuka hanya karena seseorang mengetahui URL Web App.
  *
- * Setelah itu: tempel ulang SEMUA isi file ini ke Apps Script (ganti yang lama),
- * lalu Deploy > Manage deployments > Edit (ikon pensil) > New version > Deploy.
- * (Pakai "Manage deployments" supaya URL Web App TIDAK berubah, tidak perlu ganti API_URL di HTML.)
+ * Setelah mengganti Code.gs:
+ * Deploy > Manage deployments > Edit > New version > Deploy.
  */
 
+var SESSION_TTL_SECONDS = 21600; // 6 jam
+
 function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var data = {
-    areas: sheetToObjects(ss.getSheetByName('Areas')),
-    templates: sheetToObjects(ss.getSheetByName('Templates')),
-    entries: getFullEntries(ss).map(sanitizeEntryForOperator)
-  };
-  return jsonResponse(data);
+  // Jangan expose data melalui GET. Frontend menggunakan POST + session token.
+  return jsonResponse({
+    ok: false,
+    error: 'Endpoint aktif. Gunakan POST API dari aplikasi.'
+  });
 }
 
 function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var body;
+
   try {
-    body = JSON.parse(e.postData.contents);
+    body = JSON.parse(e && e.postData ? e.postData.contents : '{}');
   } catch (err) {
     return jsonResponse({ ok: false, error: 'Payload tidak valid' });
   }
 
+  body = body || {};
+  body.data = body.data || {};
+
   try {
     switch (body.action) {
-      case 'loginLHForeman': {
-  var userId = String(body.data.userId || '').trim();
-  var pin = String(body.data.pin || '').trim();
+      case 'loginAreaOperator':
+        return jsonResponse(loginAreaOperator(ss, body.data.areaId, body.data.pin));
 
-  return jsonResponse(
-    loginLHForeman(ss, userId, pin)
-  );
-}
+      case 'loginLHForeman':
+        return jsonResponse(loginLHForeman(ss, body.data.userId, body.data.pin));
+
+      case 'getData': {
+        var dataAuth = requireAnySession(body);
+        if (!dataAuth.ok) return jsonResponse(dataAuth);
+        return jsonResponse(buildDataResponse(ss, dataAuth.session));
+      }
+
+      case 'addEntry': {
+        var operatorAuth = requireOperator(body);
+        if (!operatorAuth.ok) return jsonResponse(operatorAuth);
+        return jsonResponse(addEntryForOperator(ss, body.data, operatorAuth.session));
+      }
+
+      case 'confirmEntry': {
+        var lhAuth = requireLHForeman(body);
+        if (!lhAuth.ok) return jsonResponse(lhAuth);
+        return jsonResponse(confirmEntryForLH(ss, body.data, lhAuth.session));
+      }
+
       case 'addArea': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
-        appendRow(ss, 'Areas', [body.data.id, body.data.name, body.data.code, true]);
-        break;
-      }
-      case 'toggleArea': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
-        updateCellByRowId(ss, 'Areas', body.data.id, 'active', body.data.active);
-        break;
-      }
-      case 'addField': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
-        appendRow(ss, 'Templates', [
-          body.data.id, body.data.areaId, body.data.section || 'Umum',
-          body.data.label, body.data.type, body.data.order
-        ]);
-        break;
-      }
-      case 'removeField': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
-        deleteRowById(ss, 'Templates', body.data.id);
-        break;
-      }
-case 'addEntry':
-  appendRow(ss, 'Entries', [
-    body.data.id,
-    body.data.areaId,
-    body.data.areaName,
-    body.data.shift,
-    body.data.crew || '',
-    body.data.operator,
-    body.data.lhForeman || '',
-    body.data.datetime,
-    JSON.stringify(body.data.values),
-    JSON.stringify(body.data.correctiveActions || []),
-    !!body.data.confirmed,
-    body.data.lhComment || ''
-  ]);
-  break;
-  case 'confirmEntry': {
-    var auth = requireLHForeman(body);
-    if (!auth.ok) {
-      return jsonResponse(auth);
-    }
+        var addAreaAuth = requireLHForeman(body);
+        if (!addAreaAuth.ok) return jsonResponse(addAreaAuth);
 
-  var entryId = String(body.data.entryId || '').trim();
-  var lhForeman = String(body.data.lhForeman || '').trim();
-  var lhComment = String(body.data.lhComment || '').trim();
-  if (!entryId) {
-    return jsonResponse({
-      ok: false,
-      error: 'entryId wajib diisi'
-    });
-  }
+        var areasForAdd = ss.getSheetByName('Areas');
+        ensureColumn(areasForAdd, 'pin');
 
-  if (!lhForeman) {
-    return jsonResponse({
-      ok: false,
-      error: 'Nama LH/Foreman wajib diisi'
-    });
-  }
+        var newAreaPin = String(body.data.pin || '').trim();
+        if (!newAreaPin) {
+          return jsonResponse({ ok: false, error: 'PIN Operator wajib diisi' });
+        }
 
-  var entriesSheet = ss.getSheetByName('Entries');
-  var rowIndex = findRowIndexById(entriesSheet, entryId);
-
-  if (rowIndex < 0) {
-    return jsonResponse({
-      ok: false,
-      error: 'Pemeriksaan tidak ditemukan'
-    });
-  }
-
-var headers = entriesSheet
-  .getDataRange()
-  .getValues()[0];
-
-var normalizedHeaders = headers.map(function(header) {
-  return String(header || '').trim().toLowerCase();
-});
-
-var confirmedCol = normalizedHeaders.indexOf('confirmed') + 1;
-var lhForemanCol = normalizedHeaders.indexOf('lhforeman') + 1;
-var lhCommentCol = normalizedHeaders.indexOf('lhcomment') + 1;
-
-if (
-  confirmedCol <= 0 ||
-  lhForemanCol <= 0 ||
-  lhCommentCol <= 0
-) {
-  return jsonResponse({
-    ok: false,
-    error: 'Kolom lhforeman, confirmed, atau lhComment tidak ditemukan'
-  });
-}
-
-  var currentConfirmed =
-    entriesSheet.getRange(rowIndex, confirmedCol).getValue();
-
-  if (currentConfirmed === true ||
-      String(currentConfirmed).toUpperCase() === 'TRUE') {
-    return jsonResponse({
-      ok: false,
-      error: 'Pemeriksaan sudah dikonfirmasi'
-    });
-  }
-
-entriesSheet
-  .getRange(rowIndex, lhForemanCol)
-  .setValue(lhForeman);
-
-entriesSheet
-  .getRange(rowIndex, lhCommentCol)
-  .setValue(lhComment);
-
-entriesSheet
-  .getRange(rowIndex, confirmedCol)
-  .setValue(true);
-
-SpreadsheetApp.flush();
-
-return jsonResponse({
-  ok: true,
-  message: 'Pemeriksaan berhasil dikonfirmasi',
-  entryId: entryId,
-  lhForeman: lhForeman,
-  lhComment: lhComment,
-  confirmed: true
-});
-}
-  break;
-      case 'logoutLHForeman': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
-        var authToken = String(body.data.authToken || '').trim();
-        CacheService.getScriptCache().remove('lh_session_' + authToken);
+        appendObjectRow(areasForAdd, {
+          id: body.data.id,
+          name: body.data.name,
+          code: body.data.code,
+          active: true,
+          pin: newAreaPin
+        });
         return jsonResponse({ ok: true });
       }
+
+      case 'toggleArea': {
+        var toggleAuth = requireLHForeman(body);
+        if (!toggleAuth.ok) return jsonResponse(toggleAuth);
+        updateCellByRowId(ss, 'Areas', body.data.id, 'active', !!body.data.active);
+        return jsonResponse({ ok: true });
+      }
+
+      case 'addField': {
+        var addFieldAuth = requireLHForeman(body);
+        if (!addFieldAuth.ok) return jsonResponse(addFieldAuth);
+        appendObjectRow(ss.getSheetByName('Templates'), {
+          id: body.data.id,
+          areaId: body.data.areaId,
+          section: body.data.section || 'Umum',
+          label: body.data.label,
+          type: body.data.type,
+          order: body.data.order
+        });
+        return jsonResponse({ ok: true });
+      }
+
+      case 'removeField': {
+        var removeFieldAuth = requireLHForeman(body);
+        if (!removeFieldAuth.ok) return jsonResponse(removeFieldAuth);
+        deleteRowById(ss, 'Templates', body.data.id);
+        return jsonResponse({ ok: true });
+      }
+
       case 'getEntries': {
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
+        var entriesAuth = requireLHForeman(body);
+        if (!entriesAuth.ok) return jsonResponse(entriesAuth);
         return jsonResponse({ ok: true, entries: getFullEntries(ss) });
       }
-      case 'deleteEntry':
-        var auth = requireLHForeman(body);
-        if (!auth.ok) return jsonResponse(auth);
+
+      case 'deleteEntry': {
+        var deleteAuth = requireLHForeman(body);
+        if (!deleteAuth.ok) return jsonResponse(deleteAuth);
         deleteRowById(ss, 'Entries', body.data.id);
-        break;
+        return jsonResponse({ ok: true });
+      }
+
+      case 'logoutLHForeman': {
+        var logoutLHAuth = requireLHForeman(body);
+        if (!logoutLHAuth.ok) return jsonResponse(logoutLHAuth);
+        removeSession('lh_session_', body.data.authToken);
+        return jsonResponse({ ok: true });
+      }
+
+      case 'logoutOperator': {
+        var logoutOpAuth = requireOperator(body);
+        if (!logoutOpAuth.ok) return jsonResponse(logoutOpAuth);
+        removeSession('operator_session_', body.data.areaToken);
+        return jsonResponse({ ok: true });
+      }
+
       default:
-        return jsonResponse({ ok: false, error: 'Aksi tidak dikenal: ' + body.action });
+        return jsonResponse({
+          ok: false,
+          error: 'Aksi tidak dikenal: ' + String(body.action || '')
+        });
     }
-    return jsonResponse({ ok: true });
   } catch (err) {
     return jsonResponse({ ok: false, error: err.message });
   }
 }
 
-// ---------- Helper functions ----------
+// ---------- DATA ----------
+
+function buildDataResponse(ss, session) {
+  var allAreas = sheetToObjects(ss.getSheetByName('Areas'));
+  var allTemplates = sheetToObjects(ss.getSheetByName('Templates'));
+  var allEntries = getFullEntries(ss);
+
+  var areas;
+  var templates;
+  var entries;
+
+  if (session.role === 'OPERATOR') {
+    areas = allAreas
+      .filter(function (a) { return String(a.id) === String(session.areaId); })
+      .map(sanitizeArea);
+
+    templates = allTemplates.filter(function (t) {
+      return String(t.areaId) === String(session.areaId);
+    });
+
+    entries = allEntries
+      .filter(function (entry) {
+        return String(entry.areaId) === String(session.areaId);
+      })
+      .map(sanitizeEntryForOperator);
+  } else {
+    areas = allAreas.map(sanitizeArea);
+    templates = allTemplates;
+    entries = allEntries;
+  }
+
+  return {
+    ok: true,
+    role: session.role,
+    areas: areas,
+    templates: templates,
+    entries: entries
+  };
+}
+
+function sanitizeArea(area) {
+  return {
+    id: area.id,
+    name: area.name,
+    code: area.code,
+    active: area.active === true || String(area.active).toUpperCase() === 'TRUE'
+  };
+}
 
 function getFullEntries(ss) {
-  return sheetToObjects(ss.getSheetByName('Entries')).map(function (en) {
-    try { en.values = JSON.parse(en.valuesJSON || '{}'); } catch (err) { en.values = {}; }
-    try { en.correctiveActions = JSON.parse(en.correctiveActionsJSON || '[]'); } catch (err) { en.correctiveActions = []; }
-    delete en.valuesJSON;
-    delete en.correctiveActionsJSON;
-    return en;
+  return sheetToObjects(ss.getSheetByName('Entries')).map(function (entry) {
+    try {
+      entry.values = JSON.parse(entry.valuesJSON || '{}');
+    } catch (err) {
+      entry.values = {};
+    }
+
+    try {
+      entry.correctiveActions = JSON.parse(entry.correctiveActionsJSON || '[]');
+    } catch (err) {
+      entry.correctiveActions = [];
+    }
+
+    delete entry.valuesJSON;
+    delete entry.correctiveActionsJSON;
+    return entry;
   });
 }
 
@@ -226,156 +235,205 @@ function sanitizeEntryForOperator(entry) {
     shift: entry.shift,
     crew: entry.crew,
     operator: entry.operator,
+    lhForeman: entry.lhForeman || '',
     datetime: entry.datetime,
     confirmed: entry.confirmed,
-    values: entry.values || {}
+    lhComment: entry.lhComment || '',
+    values: entry.values || {},
+    correctiveActions: entry.correctiveActions || []
   };
 }
 
-function loginLHForeman(ss, userId, pin) {
+// ---------- LOGIN OPERATOR ----------
 
+function loginAreaOperator(ss, areaId, pin) {
+  areaId = String(areaId || '').trim();
+  pin = String(pin || '').trim();
+
+  if (!areaId || !pin) {
+    return { ok: false, error: 'Area ID dan PIN wajib diisi' };
+  }
+
+  var sheet = ss.getSheetByName('Areas');
+  if (!sheet) {
+    return { ok: false, error: 'Sheet Areas tidak ditemukan' };
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) {
+    return { ok: false, error: 'Belum ada area terdaftar' };
+  }
+
+  var headers = normalizeHeaders(data[0]);
+  var idCol = headers.indexOf('id');
+  var nameCol = headers.indexOf('name');
+  var activeCol = headers.indexOf('active');
+  var pinCol = headers.indexOf('pin');
+
+  if (idCol < 0 || nameCol < 0 || activeCol < 0 || pinCol < 0) {
+    return {
+      ok: false,
+      error: 'Kolom Areas belum lengkap. Tambahkan kolom pin pada sheet Areas.'
+    };
+  }
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rowId = String(row[idCol] || '').trim();
+
+    if (rowId !== areaId) continue;
+
+    var active = String(row[activeCol] || '').trim().toUpperCase();
+    if (active !== 'TRUE') {
+      return { ok: false, error: 'Area tidak aktif' };
+    }
+
+    var storedPin = String(row[pinCol] || '').trim();
+    if (!storedPin || storedPin !== pin) {
+      return { ok: false, error: 'Area ID atau PIN salah' };
+    }
+
+    var areaName = String(row[nameCol] || '').trim();
+    var token = createOperatorSession(rowId, areaName);
+
+    return {
+      ok: true,
+      areaToken: token,
+      resolvedAreaId: rowId,
+      areaName: areaName
+    };
+  }
+
+  return { ok: false, error: 'Area ID atau PIN salah' };
+}
+
+function createOperatorSession(areaId, areaName) {
+  var token = Utilities.getUuid();
+  var session = {
+    role: 'OPERATOR',
+    areaId: String(areaId),
+    areaName: String(areaName || ''),
+    createdAt: new Date().getTime()
+  };
+
+  CacheService.getScriptCache().put(
+    'operator_session_' + token,
+    JSON.stringify(session),
+    SESSION_TTL_SECONDS
+  );
+
+  return token;
+}
+
+function getOperatorSession(token) {
+  return getSessionFromCache('operator_session_', token);
+}
+
+function requireOperator(body) {
+  var token = body && body.data && body.data.areaToken
+    ? String(body.data.areaToken).trim()
+    : '';
+  var session = getOperatorSession(token);
+
+  if (!session || String(session.role).toUpperCase() !== 'OPERATOR') {
+    return {
+      ok: false,
+      error: 'Sesi Operator tidak valid atau sudah berakhir'
+    };
+  }
+
+  return { ok: true, session: session };
+}
+
+// ---------- LOGIN LH / FOREMAN ----------
+
+function loginLHForeman(ss, userId, pin) {
   userId = String(userId || '').trim();
   pin = String(pin || '').trim();
 
   if (!userId || !pin) {
-    return {
-      ok: false,
-      error: 'ID dan PIN wajib diisi'
-    };
+    return { ok: false, error: 'ID dan PIN wajib diisi' };
   }
 
   var usersSheet = ss.getSheetByName('Users');
-
   if (!usersSheet) {
-    return {
-      ok: false,
-      error: 'Sheet Users tidak ditemukan'
-    };
+    return { ok: false, error: 'Sheet Users tidak ditemukan' };
   }
 
   var data = usersSheet.getDataRange().getValues();
-
   if (data.length < 2) {
-    return {
-      ok: false,
-      error: 'Belum ada pengguna terdaftar'
-    };
+    return { ok: false, error: 'Belum ada pengguna terdaftar' };
   }
 
-  var headers = data[0].map(function(header) {
-    return String(header || '').trim().toLowerCase();
-  });
-
+  var headers = normalizeHeaders(data[0]);
   var userIdCol = headers.indexOf('userid');
   var namaCol = headers.indexOf('nama');
   var roleCol = headers.indexOf('role');
   var pinCol = headers.indexOf('pin');
   var aktifCol = headers.indexOf('aktif');
 
-  if (
-    userIdCol < 0 ||
-    namaCol < 0 ||
-    roleCol < 0 ||
-    pinCol < 0 ||
-    aktifCol < 0
-  ) {
-    return {
-      ok: false,
-      error: 'Kolom Users tidak lengkap'
-    };
+  if (userIdCol < 0 || namaCol < 0 || roleCol < 0 || pinCol < 0 || aktifCol < 0) {
+    return { ok: false, error: 'Kolom Users tidak lengkap' };
   }
 
   for (var i = 1; i < data.length; i++) {
-
     var row = data[i];
-
     var rowUserId = String(row[userIdCol] || '').trim();
     var rowPin = String(row[pinCol] || '').trim();
     var rowRole = String(row[roleCol] || '').trim().toUpperCase();
     var rowAktif = String(row[aktifCol] || '').trim().toUpperCase();
 
-    if (rowUserId === userId && rowPin === pin) {
+    if (rowUserId !== userId || rowPin !== pin) continue;
 
-      if (rowAktif !== 'TRUE') {
-        return {
-          ok: false,
-          error: 'Pengguna tidak aktif'
-        };
-      }
-
-      if (rowRole !== 'LH' && rowRole !== 'FOREMAN') {
-        return {
-          ok: false,
-          error: 'Pengguna tidak memiliki akses LH/Foreman'
-        };
-      }
-
-      var token = createLHSession(
-        rowUserId,
-        String(row[namaCol] || '').trim(),
-        rowRole
-      );
-
-      return {
-        ok: true,
-        userId: rowUserId,
-        nama: String(row[namaCol] || '').trim(),
-        role: rowRole,
-        authToken: token
-      };
+    if (rowAktif !== 'TRUE') {
+      return { ok: false, error: 'Pengguna tidak aktif' };
     }
+
+    if (rowRole !== 'LH' && rowRole !== 'FOREMAN') {
+      return { ok: false, error: 'Pengguna tidak memiliki akses LH/Foreman' };
+    }
+
+    var nama = String(row[namaCol] || '').trim();
+    var token = createLHSession(rowUserId, nama, rowRole);
+
+    return {
+      ok: true,
+      userId: rowUserId,
+      nama: nama,
+      role: rowRole,
+      authToken: token
+    };
   }
 
-  return {
-    ok: false,
-    error: 'ID atau PIN salah'
-  };
+  return { ok: false, error: 'ID atau PIN salah' };
 }
 
 function createLHSession(userId, nama, role) {
   var token = Utilities.getUuid();
-
   var session = {
-    userId: userId,
-    nama: nama,
-    role: role,
+    role: String(role || '').toUpperCase(),
+    userId: String(userId || ''),
+    nama: String(nama || ''),
     createdAt: new Date().getTime()
   };
 
-  CacheService
-    .getScriptCache()
-    .put(
-      'lh_session_' + token,
-      JSON.stringify(session),
-      21600
-    );
+  CacheService.getScriptCache().put(
+    'lh_session_' + token,
+    JSON.stringify(session),
+    SESSION_TTL_SECONDS
+  );
 
   return token;
 }
 
 function getLHSession(token) {
-  token = String(token || '').trim();
-
-  if (!token) return null;
-
-  var raw = CacheService
-    .getScriptCache()
-    .get('lh_session_' + token);
-
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    return null;
-  }
+  return getSessionFromCache('lh_session_', token);
 }
 
 function requireLHForeman(body) {
   var token = body && body.data && body.data.authToken
     ? String(body.data.authToken).trim()
     : '';
-
   var session = getLHSession(token);
 
   if (!session) {
@@ -385,43 +443,199 @@ function requireLHForeman(body) {
     };
   }
 
-  var role = String(session.role || '')
-    .trim()
-    .toUpperCase();
-
+  var role = String(session.role || '').trim().toUpperCase();
   if (role !== 'LH' && role !== 'FOREMAN') {
+    return { ok: false, error: 'Tidak memiliki akses LH/Foreman' };
+  }
+
+  return { ok: true, session: session };
+}
+
+function requireAnySession(body) {
+  var data = body && body.data ? body.data : {};
+  var areaToken = String(data.areaToken || '').trim();
+  var authToken = String(data.authToken || '').trim();
+
+  if (areaToken) return requireOperator(body);
+  if (authToken) return requireLHForeman(body);
+
+  return { ok: false, error: 'Sesi tidak ditemukan. Silakan login kembali.' };
+}
+
+function getSessionFromCache(prefix, token) {
+  token = String(token || '').trim();
+  if (!token) return null;
+
+  var raw = CacheService.getScriptCache().get(prefix + token);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
+function removeSession(prefix, token) {
+  token = String(token || '').trim();
+  if (token) CacheService.getScriptCache().remove(prefix + token);
+}
+
+// ---------- ENTRY ----------
+
+function addEntryForOperator(ss, data, session) {
+  var areaId = String(data.areaId || '').trim();
+  var operator = String(data.operator || '').trim();
+
+  if (!areaId) return { ok: false, error: 'Area wajib diisi' };
+  if (!operator) return { ok: false, error: 'Nama operator wajib diisi' };
+
+  if (String(session.areaId) !== areaId) {
+    return { ok: false, error: 'Operator tidak memiliki akses ke area ini' };
+  }
+
+  var area = findObjectById(ss.getSheetByName('Areas'), areaId);
+  if (!area) return { ok: false, error: 'Area tidak ditemukan' };
+
+  if (String(area.active).toUpperCase() !== 'TRUE' && area.active !== true) {
+    return { ok: false, error: 'Area tidak aktif' };
+  }
+
+  var values = data.values && typeof data.values === 'object' ? data.values : {};
+  var correctiveActions = Array.isArray(data.correctiveActions) ? data.correctiveActions : [];
+
+  appendObjectRow(ss.getSheetByName('Entries'), {
+    id: data.id || Utilities.getUuid(),
+    areaId: areaId,
+    areaName: String(area.name || ''),
+    shift: String(data.shift || ''),
+    crew: String(data.crew || ''),
+    operator: operator,
+    lhForeman: '',
+    datetime: data.datetime || new Date().toISOString(),
+    valuesJSON: JSON.stringify(values),
+    correctiveActionsJSON: JSON.stringify(correctiveActions),
+    confirmed: false,
+    lhComment: ''
+  });
+
+  return { ok: true };
+}
+
+function confirmEntryForLH(ss, data, session) {
+  var entryId = String(data.entryId || '').trim();
+  var lhComment = String(data.lhComment || '').trim();
+
+  if (!entryId) return { ok: false, error: 'entryId wajib diisi' };
+
+  var entriesSheet = ss.getSheetByName('Entries');
+  if (!entriesSheet) return { ok: false, error: 'Sheet Entries tidak ditemukan' };
+
+  var rowIndex = findRowIndexById(entriesSheet, entryId);
+  if (rowIndex < 0) return { ok: false, error: 'Pemeriksaan tidak ditemukan' };
+
+  var headers = normalizeHeaders(entriesSheet.getDataRange().getValues()[0]);
+  var confirmedCol = headers.indexOf('confirmed') + 1;
+  var lhForemanCol = headers.indexOf('lhforeman') + 1;
+  var lhCommentCol = headers.indexOf('lhcomment') + 1;
+
+  if (confirmedCol <= 0 || lhForemanCol <= 0 || lhCommentCol <= 0) {
     return {
       ok: false,
-      error: 'Tidak memiliki akses LH/Foreman'
+      error: 'Kolom Entries belum lengkap. Pastikan ada lhForeman, confirmed, dan lhComment.'
     };
   }
 
+  var currentConfirmed = entriesSheet.getRange(rowIndex, confirmedCol).getValue();
+  if (currentConfirmed === true || String(currentConfirmed).toUpperCase() === 'TRUE') {
+    return { ok: false, error: 'Pemeriksaan sudah dikonfirmasi' };
+  }
+
+  // Nama LH/Foreman berasal dari session server, bukan dari input client.
+  var lhForeman = String(session.nama || '').trim();
+  if (!lhForeman) return { ok: false, error: 'Nama LH/Foreman pada akun belum diisi' };
+
+  entriesSheet.getRange(rowIndex, lhForemanCol).setValue(lhForeman);
+  entriesSheet.getRange(rowIndex, lhCommentCol).setValue(lhComment);
+  entriesSheet.getRange(rowIndex, confirmedCol).setValue(true);
+  SpreadsheetApp.flush();
+
   return {
     ok: true,
-    session: session
+    message: 'Pemeriksaan berhasil dikonfirmasi',
+    entryId: entryId,
+    lhForeman: lhForeman,
+    lhComment: lhComment,
+    confirmed: true
   };
 }
+
+// ---------- HELPERS ----------
+
+function normalizeHeaders(headers) {
+  return headers.map(function (header) {
+    return String(header || '').trim().toLowerCase();
+  });
+}
+
 function sheetToObjects(sheet) {
   if (!sheet) return [];
+
   var values = sheet.getDataRange().getValues();
   if (values.length < 2) return [];
+
   var headers = values[0];
-  var rows = values.slice(1);
-  return rows
-    .filter(function (r) { return r[0] !== '' && r[0] !== null; })
-    .map(function (r) {
+  return values.slice(1)
+    .filter(function (row) {
+      return row[0] !== '' && row[0] !== null;
+    })
+    .map(function (row) {
       var obj = {};
-      headers.forEach(function (h, i) { obj[h] = r[i]; });
+      headers.forEach(function (header, index) {
+        obj[header] = row[index];
+      });
       return obj;
     });
 }
 
-function appendRow(ss, sheetName, rowArray) {
-  var sheet = ss.getSheetByName(sheetName);
-  sheet.appendRow(rowArray);
+
+function ensureColumn(sheet, columnName) {
+  if (!sheet) throw new Error('Sheet tidak ditemukan');
+
+  var headers = sheet.getDataRange().getValues()[0];
+  var normalized = normalizeHeaders(headers);
+  if (normalized.indexOf(String(columnName).toLowerCase()) >= 0) return;
+
+  var newColumn = sheet.getLastColumn() + 1;
+  sheet.getRange(1, newColumn).setValue(columnName);
+}
+
+function appendObjectRow(sheet, data) {
+  if (!sheet) throw new Error('Sheet tidak ditemukan');
+
+  var range = sheet.getDataRange();
+  var headers = range.getValues()[0];
+  var normalized = normalizeHeaders(headers);
+  var row = new Array(headers.length).fill('');
+
+  Object.keys(data).forEach(function (key) {
+    var index = normalized.indexOf(String(key).toLowerCase());
+    if (index >= 0) row[index] = data[key];
+  });
+
+  sheet.appendRow(row);
+}
+
+function findObjectById(sheet, id) {
+  var rows = sheetToObjects(sheet);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].id) === String(id)) return rows[i];
+  }
+  return null;
 }
 
 function findRowIndexById(sheet, id) {
+  if (!sheet) return -1;
   var values = sheet.getDataRange().getValues();
   for (var i = 1; i < values.length; i++) {
     if (String(values[i][0]) === String(id)) return i + 1;
@@ -437,10 +651,19 @@ function deleteRowById(ss, sheetName, id) {
 
 function updateCellByRowId(ss, sheetName, id, columnName, value) {
   var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('Sheet ' + sheetName + ' tidak ditemukan');
+
   var headers = sheet.getDataRange().getValues()[0];
-  var colIndex = headers.indexOf(columnName) + 1;
+  var normalized = normalizeHeaders(headers);
+  var colIndex = normalized.indexOf(String(columnName).toLowerCase()) + 1;
   var rowIndex = findRowIndexById(sheet, id);
-  if (rowIndex > 0 && colIndex > 0) sheet.getRange(rowIndex, colIndex).setValue(value);
+
+  if (rowIndex > 0 && colIndex > 0) {
+    sheet.getRange(rowIndex, colIndex).setValue(value);
+    return true;
+  }
+
+  throw new Error('Data atau kolom tidak ditemukan: ' + columnName);
 }
 
 function jsonResponse(obj) {
