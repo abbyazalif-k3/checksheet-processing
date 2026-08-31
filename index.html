@@ -653,16 +653,31 @@ async function refreshSilently(){
 }
 
 function updateHeaderIdentity(){
-  const selectedEntry = state.entries.find(entry => entry.id === selectedEntryId);
-  const operator = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.operator : formOperator.trim();
-  const crew = activeMode === APP_MODES.LH_FOREMAN && selectedEntry ? selectedEntry.crew : formCrew;
-  const lhForeman = activeMode === APP_MODES.LH_FOREMAN
-    ? (selectedEntry ? selectedEntry.lhForeman : lhSession?.nama)
-    : "-";
-  const confirmed = selectedEntry && (selectedEntry.confirmed === true || selectedEntry.confirmed === "TRUE" || selectedEntry.confirmed === "true");
+  const selectedEntry = state.entries.find(entry => String(entry.id) === String(selectedEntryId));
+  const hasSelectedEntry = !!selectedEntry;
+
+  // Saat membuka detail/riwayat, header harus mengikuti data entry yang sedang dibuka
+  // untuk kedua role. Saat tidak ada entry yang dipilih, gunakan data form/session aktif.
+  const operator = hasSelectedEntry
+    ? (selectedEntry.operator || "-")
+    : (formOperator.trim() || "-");
+  const crew = hasSelectedEntry
+    ? (selectedEntry.crew || "-")
+    : (formCrew || "-");
+  const lhForeman = hasSelectedEntry
+    ? (selectedEntry.lhForeman || (activeMode === APP_MODES.LH_FOREMAN ? (lhSession?.nama || "-") : "-"))
+    : (activeMode === APP_MODES.LH_FOREMAN ? (lhSession?.nama || "-") : "-");
+
+  const confirmed = hasSelectedEntry && (
+    selectedEntry.confirmed === true ||
+    selectedEntry.confirmed === "TRUE" ||
+    selectedEntry.confirmed === "true"
+  );
+
   document.getElementById("headerOperator").textContent = operator || "-";
-  document.getElementById("headerCrew").textContent = crew;
+  document.getElementById("headerCrew").textContent = crew || "-";
   document.getElementById("headerLHForeman").textContent = lhForeman || "-";
+
   const statusEl = document.getElementById("headerStatus");
   statusEl.className = confirmed ? "confirmed" : "unconfirmed";
   statusEl.textContent = confirmed ? "Terkonfirmasi" : "Menunggu Konfirmasi";
