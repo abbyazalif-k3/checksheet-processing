@@ -231,11 +231,15 @@
   .header-identity > div{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11px;}
   .header-identity span{color:#c4d0d3;font-size:12px;}
   .header-identity b{color:#fff;font-size:16px;overflow-wrap:anywhere;}
+  .header-status-stack{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+  .network-status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;line-height:1.2;border:1px solid rgba(255,255,255,.15);}
+  .network-status-pill.online{background:rgba(53,199,122,.12);color:#d9fbe8;border-color:rgba(53,199,122,.35);}
+  .network-status-pill.offline{background:rgba(242,184,75,.16);color:#fce4a5;border-color:rgba(242,184,75,.4);}
   #headerStatus{display:inline-flex;align-items:center;align-self:flex-start;gap:7px;color:#fff;border-radius:999px;padding:5px 12px;font-size:14px;}
   #headerStatus.confirmed{background:#19a957;}
   #headerStatus.unconfirmed{background:var(--amber-dark);}
   #headerStatus::before{content:"✓";display:inline-grid;place-items:center;width:18px;height:18px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.75);border-radius:50%;font-size:12px;font-weight:800;}
-  #headerStatus.unconfirmed::before{content:"";width:10px;height:10px;background:#f59e0b;border:none;}
+  #headerStatus.unconfirmed::before{content:"⏳";width:auto;height:auto;background:none;border:none;font-size:13px;}
   @media (max-width:520px){
     .header-identity{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px;margin-top:16px;padding-top:16px;}
     header{padding:16px 14px 18px;}
@@ -450,7 +454,13 @@
     <div><span>Operator</span><b id="headerOperator">-</b></div>
     <div><span>Crew</span><b id="headerCrew">Crew A</b></div>
     <div><span>LH/Foreman</span><b id="headerLHForeman">-</b></div>
-    <div><span>Status</span><b id="headerStatus" class="unconfirmed">Menunggu Konfirmasi</b></div>
+    <div>
+      <span>Status</span>
+      <div class="header-status-stack">
+        <b id="headerStatus" class="unconfirmed">Menunggu Konfirmasi</b>
+        <span id="connectionStatusBadge" class="network-status-pill online">● Online</span>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -593,6 +603,100 @@ function clearStoredSession(){
 }
 
 function uid(p){ return p+"_"+Math.random().toString(36).slice(2,10); }
+const OFFLINE_DB_NAME = "checksheet-processing";
+const OFFLINE_STORE_NAME = "pendingEntries";
+
+function openOfflineDB(){
+  return new Promise((resolve, reject)=>{
+    if (!("indexedDB" in window)) {
+      resolve(null);
+      return;
+    }
+
+    const request = indexedDB.open(OFFLINE_DB_NAME, 1);
+    request.onupgradeneeded = (event)=>{
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(OFFLINE_STORE_NAME)) {
+        db.createObjectStore(OFFLINE_STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = ()=> resolve(request.result);
+    request.onerror = ()=> reject(request.error || new Error("IndexedDB tidak tersedia."));
+  });
+}
+
+async function saveEntryOffline(entry){
+  if (!entry || !entry.id) return null;
+  const db = await openOfflineDB();
+  if (!db) return null;
+
+  const payload = {
+    ...entry,
+    id: String(entry.id),
+    syncStatus: "pending",
+    savedLocallyAt: new Date().toISOString()
+  };
+
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(OFFLINE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(OFFLINE_STORE_NAME);
+    const req = store.put(payload);
+    req.onsuccess = ()=> resolve(payload);
+    req.onerror = ()=> reject(req.error || new Error("Gagal menyimpan data lokal."));
+  });
+}
+
+async function getPendingEntries(){
+  const db = await openOfflineDB();
+  if (!db) return [];
+
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(OFFLINE_STORE_NAME, "readonly");
+    const store = tx.objectStore(OFFLINE_STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = ()=> resolve(req.result || []);
+    req.onerror = ()=> reject(req.error || new Error("Gagal membaca antrean lokal."));
+  });
+}
+
+async function deletePendingEntry(id){
+  if (!id) return null;
+  const db = await openOfflineDB();
+  if (!db) return null;
+
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(OFFLINE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(OFFLINE_STORE_NAME);
+    const req = store.delete(String(id));
+    req.onsuccess = ()=> resolve(true);
+    req.onerror = ()=> reject(req.error || new Error("Gagal menghapus antrean lokal."));
+  });
+}
+
+async function updatePendingEntry(id, patch){
+  if (!id) return null;
+  const db = await openOfflineDB();
+  if (!db) return null;
+
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(OFFLINE_STORE_NAME, "readwrite");
+    const store = tx.objectStore(OFFLINE_STORE_NAME);
+    const getReq = store.get(String(id));
+    getReq.onsuccess = ()=>{
+      const current = getReq.result;
+      if (!current) {
+        resolve(null);
+        return;
+      }
+      const updated = { ...current, ...patch, id: String(id) };
+      const putReq = store.put(updated);
+      putReq.onsuccess = ()=> resolve(updated);
+      putReq.onerror = ()=> reject(putReq.error || new Error("Gagal memperbarui antrean lokal."));
+    };
+    getReq.onerror = ()=> reject(getReq.error || new Error("Gagal membaca antrean lokal."));
+  });
+}
+
 function todayKey(d){ return new Date(d).toISOString().slice(0,10); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function groupBySection(fields){
@@ -655,6 +759,20 @@ function toast(msg, isError){
   document.body.appendChild(el);
   setTimeout(()=>el.remove(), 2500);
 }
+
+async function updateSyncStatusUI(){
+  const connBadge = document.getElementById("connectionStatusBadge");
+  if (connBadge){
+    const isOnline = navigator.onLine !== false;
+    connBadge.textContent = isOnline ? "● Online" : "● Offline";
+    connBadge.classList.toggle("online", isOnline);
+    connBadge.classList.toggle("offline", !isOnline);
+    connBadge.parentElement.style.display = "";
+  }
+}
+
+window.addEventListener("online", ()=> updateSyncStatusUI());
+window.addEventListener("offline", ()=> updateSyncStatusUI());
 
 const SESSION_EXPIRED_MESSAGES = [
   "Sesi LH/Foreman tidak valid atau sudah berakhir",
@@ -975,6 +1093,7 @@ function setActiveFieldIndex(nextIndex){
 function render(){
   if (activeMode === APP_MODES.OPERATOR && tab === "kelola") tab = "isi";
   updateHeaderIdentity();
+  updateSyncStatusUI();
   document.querySelectorAll("nav button").forEach(b=>{
     const isKelola = b.dataset.tab === "kelola";
     b.style.display = isKelola && activeMode !== APP_MODES.LH_FOREMAN ? "none" : "";
@@ -1295,11 +1414,28 @@ async function submitEntry(){
     values: formValues, correctiveActions: formCorrective, confirmed: false,
     areaToken: session ? session.token : ""
   };
-  toast("Menyimpan…");
+
+  let savedOffline = null;
+  try {
+    savedOffline = await saveEntryOffline(entry);
+  } catch (error) {
+    toast("Data lokal tidak dapat disimpan. Coba lagi.", true);
+    return;
+  }
+
   const submitButton = document.querySelector("[data-submit-entry]");
   const res = await runApiAction("addEntry", entry, submitButton, "Menyimpan...");
-  if (!res) return;
+  if (!res) {
+    updateSyncStatusUI();
+    toast("Permintaan sedang diproses. Data tetap tersimpan lokal dan menunggu sinkronisasi.", true);
+    return;
+  }
   if (res.ok){
+    try {
+      await deletePendingEntry(entry.id);
+    } catch (error) {
+      toast("Data berhasil dikirim, tetapi antrean lokal gagal dibersihkan.", true);
+    }
     await refreshSilently();
     selectedArea = session ? session.areaId : null;
     formValues={}; formOperator=""; formCrew=CREWS[0]; formError=""; formCorrective=[];
@@ -1308,8 +1444,9 @@ async function submitEntry(){
   } else if (handleSessionFailure(res)) {
     return;
   } else {
-    toast("Gagal menyimpan: "+(res.error||""), true);
+    toast("Gagal mengirim. Data tersimpan lokal dan menunggu sinkronisasi.", true);
   }
+  updateSyncStatusUI();
 }
 
 // ---------- TAB: KELOLA AREA ----------
