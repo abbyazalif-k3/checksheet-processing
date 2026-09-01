@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------------
  * Struktur Sheet:
  *
- * Areas     -> id | name | code | active | pin
+ * Areas     -> id | name | code | active
  * Templates -> id | areaId | section | label | type | order
  * Users     -> userid | nama | role | pin | aktif
  * Entries   -> id | areaId | areaName | shift | crew | operator |
@@ -11,7 +11,7 @@
  *             confirmed | lhComment
  *
  * Catatan:
- * - Kolom Areas.pin dipakai untuk login Operator berdasarkan Area ID + PIN.
+ * - Sheet AreaAccess dipakai untuk login Operator berdasarkan Area ID + PIN.
  * - Users.role harus LH atau FOREMAN untuk akses verifikasi/kelola.
  * - PIN tidak pernah dikirim ke frontend dan tidak disimpan di sessionStorage.
  * - Frontend menggunakan POST action=getData, bukan GET, sehingga data tidak
@@ -75,27 +75,58 @@ function doPost(e) {
         if (!addAreaAuth.ok) return jsonResponse(addAreaAuth);
 
         var areasForAdd = ss.getSheetByName('Areas');
-        ensureColumn(areasForAdd, 'pin');
+        var accessForAdd = ss.getSheetByName('AreaAccess');
+        if (!areasForAdd) return jsonResponse({ ok: false, error: 'Sheet Areas tidak ditemukan' });
+        if (!accessForAdd) return jsonResponse({ ok: false, error: 'Sheet AreaAccess tidak ditemukan' });
 
+        var newAreaId = String(body.data.id || '').trim();
+        var newAreaName = String(body.data.name || '').trim();
+        var newAreaCode = String(body.data.code || '').trim();
         var newAreaPin = String(body.data.pin || '').trim();
+
+        if (!newAreaId || !newAreaName) {
+          return jsonResponse({ ok: false, error: 'ID dan nama area wajib diisi' });
+        }
         if (!newAreaPin) {
           return jsonResponse({ ok: false, error: 'PIN Operator wajib diisi' });
         }
+        if (findObjectById(areasForAdd, newAreaId)) {
+          return jsonResponse({ ok: false, error: 'ID area sudah digunakan' });
+        }
+        if (findObjectByField(accessForAdd, 'areaId', newAreaId)) {
+          return jsonResponse({ ok: false, error: 'AreaAccess untuk ID tersebut sudah ada' });
+        }
 
         appendObjectRow(areasForAdd, {
-          id: body.data.id,
-          name: body.data.name,
-          code: body.data.code,
-          active: true,
-          pin: newAreaPin
+          id: newAreaId,
+          name: newAreaName,
+          code: newAreaCode,
+          active: true
         });
+
+        appendObjectRow(accessForAdd, {
+          areaId: newAreaId,
+          areaName: newAreaName,
+          pin: newAreaPin,
+          active: true
+        });
+
         return jsonResponse({ ok: true });
       }
 
       case 'toggleArea': {
         var toggleAuth = requireLHForeman(body);
         if (!toggleAuth.ok) return jsonResponse(toggleAuth);
-        updateCellByRowId(ss, 'Areas', body.data.id, 'active', !!body.data.active);
+
+        var areaIdToToggle = String(body.data.id || '').trim();
+        var activeToSet = !!body.data.active;
+        updateCellByRowId(ss, 'Areas', areaIdToToggle, 'active', activeToSet);
+
+        var areaAccessSheet = ss.getSheetByName('AreaAccess');
+        if (areaAccessSheet) {
+          updateCellByRowId(areaAccessSheet, 'AreaAccess', areaIdToToggle, 'active', activeToSet);
+        }
+
         return jsonResponse({ ok: true });
       }
 
@@ -254,57 +285,42 @@ function loginAreaOperator(ss, areaId, pin) {
     return { ok: false, error: 'Area ID dan PIN wajib diisi' };
   }
 
-  var sheet = ss.getSheetByName('Areas');
-  if (!sheet) {
-    return { ok: false, error: 'Sheet Areas tidak ditemukan' };
+  var areasSheet = ss.getSheetByName('Areas');
+  var accessSheet = ss.getSheetByName('AreaAccess');
+
+  if (!areasSheet) return { ok: false, error: 'Sheet Areas tidak ditemukan' };
+  if (!accessSheet) return { ok: false, error: 'Sheet AreaAccess tidak ditemukan' };
+
+  var area = findObjectById(areasSheet, areaId);
+  if (!area) return { ok: false, error: 'Area ID atau PIN salah' };
+
+  var areaActive = String(area.active || '').trim().toUpperCase();
+  if (areaActive !== 'TRUE') {
+    return { ok: false, error: 'Area tidak aktif' };
   }
 
-  var data = sheet.getDataRange().getValues();
-  if (data.length < 2) {
-    return { ok: false, error: 'Belum ada area terdaftar' };
+  var access = findObjectByField(accessSheet, 'areaId', areaId);
+  if (!access) return { ok: false, error: 'Akses Operator untuk area ini belum terdaftar' };
+
+  var accessActive = String(access.active || '').trim().toUpperCase();
+  if (accessActive !== 'TRUE') {
+    return { ok: false, error: 'Akses Operator untuk area ini tidak aktif' };
   }
 
-  var headers = normalizeHeaders(data[0]);
-  var idCol = headers.indexOf('id');
-  var nameCol = headers.indexOf('name');
-  var activeCol = headers.indexOf('active');
-  var pinCol = headers.indexOf('pin');
-
-  if (idCol < 0 || nameCol < 0 || activeCol < 0 || pinCol < 0) {
-    return {
-      ok: false,
-      error: 'Kolom Areas belum lengkap. Tambahkan kolom pin pada sheet Areas.'
-    };
+  var storedPin = String(access.pin || '').trim();
+  if (!storedPin || storedPin !== pin) {
+    return { ok: false, error: 'Area ID atau PIN salah' };
   }
 
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var rowId = String(row[idCol] || '').trim();
+  var areaName = String(area.name || access.areaName || '').trim();
+  var token = createOperatorSession(areaId, areaName);
 
-    if (rowId !== areaId) continue;
-
-    var active = String(row[activeCol] || '').trim().toUpperCase();
-    if (active !== 'TRUE') {
-      return { ok: false, error: 'Area tidak aktif' };
-    }
-
-    var storedPin = String(row[pinCol] || '').trim();
-    if (!storedPin || storedPin !== pin) {
-      return { ok: false, error: 'Area ID atau PIN salah' };
-    }
-
-    var areaName = String(row[nameCol] || '').trim();
-    var token = createOperatorSession(rowId, areaName);
-
-    return {
-      ok: true,
-      areaToken: token,
-      resolvedAreaId: rowId,
-      areaName: areaName
-    };
-  }
-
-  return { ok: false, error: 'Area ID atau PIN salah' };
+  return {
+    ok: true,
+    areaToken: token,
+    resolvedAreaId: areaId,
+    areaName: areaName
+  };
 }
 
 function createOperatorSession(areaId, areaName) {
@@ -630,6 +646,18 @@ function findObjectById(sheet, id) {
   var rows = sheetToObjects(sheet);
   for (var i = 0; i < rows.length; i++) {
     if (String(rows[i].id) === String(id)) return rows[i];
+  }
+  return null;
+}
+
+function findObjectByField(sheet, fieldName, value) {
+  var rows = sheetToObjects(sheet);
+  var key = String(fieldName || '').trim().toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    var rowKey = Object.keys(rows[i]).find(function (k) {
+      return String(k).trim().toLowerCase() === key;
+    });
+    if (rowKey && String(rows[i][rowKey]) === String(value)) return rows[i];
   }
   return null;
 }
