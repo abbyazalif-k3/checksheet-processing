@@ -1357,7 +1357,7 @@ function renderRiwayat(){
         ${remainingFindings>0 ? `<div class="history-finding-comment">+ ${remainingFindings} temuan lainnya</div>` : ""}
       </div>` : `<div class="history-normal">✓ Semua pemeriksaan normal</div>`;
     const confirmed = isConfirmed(e);
-    const confirmationHtml = activeMode === APP_MODES.OPERATOR && confirmed
+    const confirmationHtml = confirmed
       ? `<div class="history-confirmation">
         ${e.lhForeman ? `<div>LH/Foreman: <b>${esc(e.lhForeman)}</b></div>` : ""}
         ${e.lhComment ? `<div class="history-comment">💬 ${esc(e.lhComment)}</div>` : ""}
