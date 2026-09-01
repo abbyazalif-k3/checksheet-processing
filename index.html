@@ -25,16 +25,43 @@
   .stamp .num{font-size:16px;font-weight:700;}
 
   .app-body{display:flex;align-items:flex-start;min-height:calc(100vh - 138px);}
-  nav{display:flex;flex:0 0 240px;flex-direction:column;gap:6px;background:#10232C;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:138px;height:calc(100vh - 138px);z-index:10;}
-  nav button{width:100%;border:1px solid transparent;border-radius:8px;background:transparent;text-align:left;padding:13px 14px;font-size:13px;font-weight:600;color:#91A3AA;cursor:pointer;}
-  nav button::before{display:inline-block;width:22px;color:var(--amber);font-size:15px;}
-  nav button[data-tab="isi"]::before{content:"▣";}
-  nav button[data-tab="riwayat"]::before{content:"◷";}
-  nav button[data-tab="kelola"]::before{content:"⚙";}
-  nav button.active{color:#fff;background:#1B3945;border-color:#2C5968;box-shadow:inset 3px 0 var(--amber);}
-  nav button:hover{background:#17323D;color:#fff;}
-  .sidebar-logout{margin-top:auto !important;color:#91A3AA !important;}
-  .sidebar-logout::before{content:"↪" !important;}
+  nav{
+    display:flex;flex:0 0 240px;flex-direction:column;gap:8px;
+    background:linear-gradient(180deg,#0f2333 0%,#0c1f2d 100%);
+    border-right:1px solid rgba(182, 199, 205, 0.18);
+    padding:18px 12px 14px;
+    position:sticky;top:138px;height:calc(100vh - 138px);z-index:10;
+    box-shadow:inset -1px 0 0 rgba(255,255,255,0.04), 8px 0 22px rgba(5,15,20,0.12);
+  }
+  nav button{
+    width:100%;display:flex;align-items:center;gap:12px;
+    border:1px solid rgba(146, 164, 170, 0.14);border-radius:16px;background:rgba(14,29,38,0.75);
+    text-align:left;padding:13px 14px;font-size:13px;font-weight:700;letter-spacing:.02em;
+    color:#c8d5db;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease,color .18s ease;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 10px rgba(10,18,22,0.12);
+  }
+  nav button:hover{
+    background:rgba(21,38,48,0.94);border-color:rgba(242,184,75,0.38);color:#f5f7f8;transform:translateY(-1px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(8,15,20,0.18);
+  }
+  nav button.active{
+    color:#fff;background:linear-gradient(180deg,#17374c 0%,#122d3d 100%);border-color:rgba(242,184,75,0.7);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 22px rgba(13,20,27,0.25), 0 0 0 1px rgba(242,184,75,0.2);
+    position:relative;
+  }
+  nav button.active::after{
+    content:"";position:absolute;left:10px;top:8px;bottom:8px;width:3px;border-radius:999px;background:linear-gradient(180deg,var(--amber),#d49a2d);box-shadow:0 0 12px rgba(242,184,75,0.6);
+  }
+  nav button.active .nav-label{padding-left:2px;}
+  .nav-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 20px;color:var(--amber);opacity:1;filter:drop-shadow(0 0 8px rgba(242,184,75,0.2));}
+  .nav-icon svg{display:block;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .nav-label{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sidebar-logout{
+    margin-top:auto !important;color:#d2dfe5 !important;border-color:rgba(182, 199, 205, 0.14) !important;
+    background:rgba(14,29,38,0.72) !important;
+  }
+  .sidebar-logout:hover{border-color:rgba(242,184,75,0.38) !important;}
+  .sidebar-logout .nav-icon{color:#f0b358;}
 
   main{flex:1;min-width:0;padding:32px clamp(20px,4vw,56px) 80px;max-width:1440px;margin:0 auto;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-bottom:16px;}
@@ -240,10 +267,21 @@
   }
   @media (max-width:520px){
     .app-body{display:block;min-height:0;}
-    nav{position:sticky;top:0;width:100%;height:auto;flex-direction:row;gap:4px;overflow-x:auto;padding:8px 10px;background:#10232C;border-right:0;border-bottom:1px solid var(--line);}
-    nav button{flex:1 1 0;width:auto;min-width:0;text-align:center;padding:10px 4px;font-size:11px;white-space:normal;}
-    nav button::before{width:auto;margin-right:5px;}
-    .sidebar-logout{display:block !important;margin-top:0 !important;}
+    nav{
+      position:sticky;top:0;width:100%;height:auto;flex-direction:row;gap:6px;
+      overflow-x:auto;padding:8px 10px;background:linear-gradient(180deg,#0f2333 0%,#0d1b27 100%);
+      border-right:0;border-bottom:1px solid rgba(182, 199, 205, 0.18);
+      box-shadow:0 8px 18px rgba(2,8,12,0.16);
+    }
+    nav button{
+      flex:1 1 0;width:auto;min-width:0;text-align:center;justify-content:center;padding:10px 6px;font-size:11px;white-space:nowrap;
+      border-radius:12px;gap:6px;min-height:44px;
+    }
+    nav button.active::after{left:8px;right:8px;top:auto;bottom:4px;height:2px;width:auto;}
+    nav button .nav-icon{width:16px;height:16px;flex-basis:16px;}
+    nav button .nav-icon svg{width:15px;height:15px;}
+    .nav-label{font-size:10.5px;letter-spacing:.02em;}
+    .sidebar-logout{display:flex !important;margin-top:0 !important;}
     main{padding:18px 14px 60px;}
     .history-card{padding:16px;}
     .history-card .entry-header{align-items:flex-start;flex-direction:column;gap:8px;}
@@ -418,10 +456,30 @@
 
 <div class="app-body">
   <nav>
-    <button data-tab="isi" class="active">AREA CHECKSHEET</button>
-    <button data-tab="riwayat">Riwayat</button>
-    <button data-tab="kelola">Kelola Area</button>
-    <button type="button" class="sidebar-logout" data-logout="1">Keluar</button>
+    <button data-tab="isi" class="active">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="4" rx="1.5"></rect><rect x="14" y="11" width="7" height="10" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+      </span>
+      <span class="nav-label">AREA CHECKSHEET</span>
+    </button>
+    <button data-tab="riwayat">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path><path d="M7 3h10"></path></svg>
+      </span>
+      <span class="nav-label">Riwayat</span>
+    </button>
+    <button data-tab="kelola">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .49 1.7 1.7 0 0 0-.4 1.12V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-.4-1.12 1.7 1.7 0 0 0-1-.49 1.7 1.7 0 0 0-1.86.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.49-1 1.7 1.7 0 0 0-1.12-.4H2.9a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.12-.4 1.7 1.7 0 0 0 .49-1 1.7 1.7 0 0 0-.34-1.86l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.49 1.7 1.7 0 0 0 .4-1.12V2.9a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .4 1.12 1.7 1.7 0 0 0 1 .49 1.7 1.7 0 0 0 1.86-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.18.3.45.52.8.66a1.7 1.7 0 0 0 1.13.4h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.13.4 1.7 1.7 0 0 0-.8.66Z"></path></svg>
+      </span>
+      <span class="nav-label">Kelola Area</span>
+    </button>
+    <button type="button" class="sidebar-logout" data-logout="1">
+      <span class="nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M14 3h5v18h-5"></path></svg>
+      </span>
+      <span class="nav-label">Keluar</span>
+    </button>
   </nav>
 
   <main id="main">
